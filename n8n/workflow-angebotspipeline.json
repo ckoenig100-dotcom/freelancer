@@ -371,7 +371,7 @@
       "parameters": {
         "fromEmail": "={{$env.SMTP_FROM_EMAIL}}",
         "toEmail": "={{$('Code - HTML-Vorlage erstellen').item.json.email}}",
-        "subject": "Dein individuelles Angebot",
+        "subject": "=Dein individuelles Angebot ({{ $('Code - HTML-Vorlage erstellen').item.json.angebotsnummer }})",
         "text": "=Hallo {{ $('Code - HTML-Vorlage erstellen').item.json.name }},\n\nvielen Dank fuer deine Anfrage! Im Anhang findest du dein individuelles Angebot (Angebotsnummer {{ $('Code - HTML-Vorlage erstellen').item.json.angebotsnummer }}).\n\nDas Angebot ist 14 Tage gueltig. Bei Fragen melde dich gerne jederzeit.\n\nViele Gruesse",
         "options": {
           "fileAttachments": "data"
