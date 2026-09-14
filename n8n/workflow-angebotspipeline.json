@@ -60,6 +60,22 @@
       }
     },
     {
+      "id": "smtp-bestaetigung",
+      "name": "SMTP - Kundenbestaetigung",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [680, 380],
+      "parameters": {
+        "fromEmail": "={{$env.SMTP_FROM_EMAIL}}",
+        "toEmail": "={{$json.body.email}}",
+        "subject": "Deine Anfrage ist bei uns eingegangen",
+        "text": "=Hallo {{ $json.body.name }},\n\nvielen Dank fuer deine Anfrage! Du erhaeltst dein individuelles Angebot innerhalb von 24 Stunden per E-Mail.\n\nViele Gruesse"
+      },
+      "credentials": {
+        "smtp": { "name": "SMTP Account" }
+      }
+    },
+    {
       "id": "http-claude",
       "name": "Claude API - Angebotstext generieren",
       "type": "n8n-nodes-base.httpRequest",
@@ -130,15 +146,16 @@
     },
     {
       "id": "smtp-angebot",
-      "name": "SMTP - Angebot senden",
+      "name": "SMTP - Angebot zur Pruefung",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [1340, 200],
+      "notes": "Geht an den Freelancer selbst zur Pruefung, nicht an den Kunden. Kunde bekommt vorher nur die Bestaetigungsmail; die tatsaechliche Zustellung des Angebots erfolgt manuell durch den Freelancer.",
       "parameters": {
         "fromEmail": "={{$env.SMTP_FROM_EMAIL}}",
-        "toEmail": "={{$('Code - HTML-Vorlage erstellen').item.json.email}}",
-        "subject": "Dein individuelles Angebot",
-        "text": "=Hallo {{ $('Code - HTML-Vorlage erstellen').item.json.name }},\n\nvielen Dank fuer deine Anfrage! Im Anhang findest du dein individuelles Angebot (Angebotsnummer {{ $('Code - HTML-Vorlage erstellen').item.json.angebotsnummer }}).\n\nDas Angebot ist 14 Tage gueltig. Bei Fragen melde dich gerne jederzeit.\n\nViele Gruesse",
+        "toEmail": "chris@agentic-code.at",
+        "subject": "=Neues KI-Angebot zur Pruefung: {{ $('Code - HTML-Vorlage erstellen').item.json.name }}",
+        "text": "=Neue qualifizierte Anfrage von {{ $('Code - HTML-Vorlage erstellen').item.json.name }} ({{ $('Code - HTML-Vorlage erstellen').item.json.email }}).\n\nAngebotsnummer: {{ $('Code - HTML-Vorlage erstellen').item.json.angebotsnummer }}\nBudget: {{ $('Code - HTML-Vorlage erstellen').item.json.budget }}\n\nDas von Claude generierte Angebot findest du im Anhang. Bitte pruefen und an den Kunden weiterleiten.",
         "options": {
           "fileAttachments": "data"
         }
@@ -168,7 +185,7 @@
             "projektbeschreibung": "={{ $('Code - HTML-Vorlage erstellen').item.json.projektbeschreibung }}",
             "starttermin": "={{ $('Code - HTML-Vorlage erstellen').item.json.starttermin || null }}",
             "quelle": "={{ $('Code - HTML-Vorlage erstellen').item.json.quelle || null }}",
-            "status": "qualifiziert - Angebot gesendet",
+            "status": "qualifiziert - Angebot zur Pruefung gesendet",
             "angebotsnummer": "={{ $('Code - HTML-Vorlage erstellen').item.json.angebotsnummer }}",
             "datum": "={{ $('Code - HTML-Vorlage erstellen').item.json.datum }}"
           },
@@ -235,8 +252,13 @@
     },
     "IF - Qualifiziert?": {
       "main": [
-        [{ "node": "Claude API - Angebotstext generieren", "type": "main", "index": 0 }],
+        [{ "node": "SMTP - Kundenbestaetigung", "type": "main", "index": 0 }],
         [{ "node": "SMTP - Absage senden", "type": "main", "index": 0 }]
+      ]
+    },
+    "SMTP - Kundenbestaetigung": {
+      "main": [
+        [{ "node": "Claude API - Angebotstext generieren", "type": "main", "index": 0 }]
       ]
     },
     "Claude API - Angebotstext generieren": {
@@ -251,10 +273,10 @@
     },
     "HTML zu PDF konvertieren": {
       "main": [
-        [{ "node": "SMTP - Angebot senden", "type": "main", "index": 0 }]
+        [{ "node": "SMTP - Angebot zur Pruefung", "type": "main", "index": 0 }]
       ]
     },
-    "SMTP - Angebot senden": {
+    "SMTP - Angebot zur Pruefung": {
       "main": [
         [{ "node": "Supabase - CRM speichern", "type": "main", "index": 0 }]
       ]
