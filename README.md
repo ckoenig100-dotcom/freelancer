@@ -25,6 +25,21 @@ CORS-Requests von der Formular-Domain erlauben (z.B. über eine
 "Respond to Webhook"-Node mit passenden Headern) oder produktiv über einen
 eigenen Server-Proxy laufen.
 
+## Deployment
+
+Läuft produktiv unter **https://agentic-code.at/freelancer/**, nach dem
+gleichen Muster wie die anderen Projekte auf diesem Server:
+
+- `output: 'server'` + `@astrojs/node`-Adapter (Standalone-Modus), `base: '/freelancer/'`
+- systemd-Service `freelancer.service` (Port 4324, `WorkingDirectory=/opt/angebots-pipeline-fuer_freelancer`)
+- nginx-Location `/freelancer` in `/etc/nginx/sites-available/agentic-code.at` proxied auf `127.0.0.1:4324`
+
+Nach Code-Änderungen: `npm run build` und `systemctl restart freelancer.service`.
+`PUBLIC_N8N_WEBHOOK_URL` wird beim Build fest in den Client-Bundle
+eingebacken — der laufende Node-Prozess braucht daher keine `.env`
+(bewusst kein `EnvironmentFile` im Service, damit keine Secrets aus
+einer eventuell erweiterten `.env` in den öffentlichen Prozess gelangen).
+
 ## Projektstruktur
 
 ```text
