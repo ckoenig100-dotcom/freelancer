@@ -119,7 +119,8 @@ Social-Media-Content-Maschine-Projekt).
   echte fortlaufende Nummerierung müsste vor der PDF-Erstellung ein
   Datenbank-Lookup des letzten Standes eingebaut werden.
 - **Firmenname/Kontaktdaten** im PDF-Header sind im Code-Node
-  (`FIRMA_NAME`, `FIRMA_KONTAKT`) hart hinterlegt — bitte anpassen.
+  (`FIRMA_NAME`, `FIRMA_KONTAKT`) hart hinterlegt — bereits angepasst:
+  `Agentic-Code e.U.` / `chris@agentic-code.at - +43 678 1255 005`.
 - **Claude-Modell**: aktuell `claude-sonnet-5`. Bei Bedarf im
   `jsonBody` der Claude-Node anpassen.
 - **SSRF-Schutz bei der Referenzseite** ist nur eine Basisabsicherung
