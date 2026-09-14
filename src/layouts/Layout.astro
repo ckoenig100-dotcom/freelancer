@@ -21,15 +21,37 @@ const { title, description = 'Individuelles Angebot innerhalb von 24 Stunden –
   <body class="bg-slate-50 text-slate-900 antialiased">
     <header class="bg-slate-900 text-white">
       <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-        <a href={import.meta.env.BASE_URL} class="text-lg font-semibold tracking-tight">
+        <a href={import.meta.env.BASE_URL} class="flex items-center gap-3 text-lg font-semibold tracking-tight">
+          <img
+            src={`${import.meta.env.BASE_URL}profil.jpg`}
+            alt=""
+            class="h-9 w-9 rounded-full border-2 border-slate-700 object-cover"
+          />
           Angebots<span class="text-emerald-400">Pipeline</span>
         </a>
-        <span class="hidden text-sm text-slate-300 sm:block">Antwort innerhalb von 24 Stunden</span>
+        <div class="flex items-center gap-4">
+          <span class="hidden text-sm text-slate-300 sm:block">Antwort innerhalb von 24 Stunden</span>
+          <a
+            href={`${import.meta.env.BASE_URL}admin`}
+            class="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
+          >
+            Admin
+          </a>
+        </div>
       </div>
     </header>
     <slot />
-    <footer class="border-t border-slate-200 bg-white py-8 text-center text-sm text-slate-500">
-      <p>&copy; {new Date().getFullYear()} AngebotsPipeline. Alle Angaben ohne Gewähr.</p>
+    <footer class="border-t border-slate-200 bg-white">
+      <div class="mx-auto flex max-w-6xl flex-col items-center gap-2 px-6 py-6 text-xs text-slate-500 sm:flex-row sm:justify-between">
+        <p>&copy; {new Date().getFullYear()} Christian König</p>
+        <nav aria-label="Rechtliches">
+          <ul class="flex items-center gap-4">
+            <li><a href="mailto:chris@live.at" class="hover:text-slate-900 hover:underline">Kontakt</a></li>
+            <li><a href={`${import.meta.env.BASE_URL}impressum`} class="hover:text-slate-900 hover:underline">Impressum</a></li>
+            <li><a href={`${import.meta.env.BASE_URL}datenschutz`} class="hover:text-slate-900 hover:underline">Datenschutz</a></li>
+          </ul>
+        </nav>
+      </div>
     </footer>
   </body>
 </html>
