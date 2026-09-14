@@ -65,13 +65,25 @@ const sourceOptions = [
       id="projektbeschreibung"
       name="projektbeschreibung"
       rows="5"
-      required
-      minlength="50"
+      placeholder="Beschreib dein Projekt (mind. 50 Zeichen) oder lade weiter unten ein PDF hoch"
       class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
     ></textarea>
     <div class="mt-1 flex items-center justify-between">
       <p class="field-error hidden text-sm text-rose-600" role="alert"></p>
       <p id="char-count" class="ml-auto text-xs text-slate-400">0 / 50 Zeichen</p>
+    </div>
+    <div class="mt-3">
+      <label for="projektbeschreibung-pdf" class="mb-1 block text-sm font-medium text-slate-700">
+        Oder: Projektbeschreibung als PDF hochladen
+      </label>
+      <input
+        type="file"
+        id="projektbeschreibung-pdf"
+        name="pdf"
+        accept="application/pdf"
+        class="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
+      />
+      <p class="mt-1 text-xs text-slate-400">Optional, max. 10 MB. Ersetzt die Textbeschreibung, falls hochgeladen.</p>
     </div>
   </div>
 
@@ -132,8 +144,10 @@ const sourceOptions = [
   const formError = document.getElementById('form-error') as HTMLParagraphElement;
   const description = document.getElementById('projektbeschreibung') as HTMLTextAreaElement;
   const charCount = document.getElementById('char-count') as HTMLParagraphElement;
+  const pdfInput = document.getElementById('projektbeschreibung-pdf') as HTMLInputElement;
 
   const MIN_DESCRIPTION_LENGTH = 50;
+  const MAX_PDF_SIZE_BYTES = 10 * 1024 * 1024;
 
   function updateCharCount() {
     const length = description.value.trim().length;
@@ -190,11 +204,22 @@ const sourceOptions = [
     }
 
     const projektbeschreibung = String(data.get('projektbeschreibung') || '').trim();
-    if (!projektbeschreibung) {
-      setFieldError(description, 'Bitte beschreibe dein Projekt.');
+    const pdfFile = pdfInput.files?.[0];
+    if (pdfFile) {
+      if (pdfFile.type !== 'application/pdf') {
+        setFieldError(description, 'Die hochgeladene Datei muss ein PDF sein.');
+        valid = false;
+      } else if (pdfFile.size > MAX_PDF_SIZE_BYTES) {
+        setFieldError(description, 'Das PDF darf maximal 10 MB groß sein.');
+        valid = false;
+      } else {
+        setFieldError(description, '');
+      }
+    } else if (!projektbeschreibung) {
+      setFieldError(description, 'Bitte beschreibe dein Projekt oder lade ein PDF hoch.');
       valid = false;
     } else if (projektbeschreibung.length < MIN_DESCRIPTION_LENGTH) {
-      setFieldError(description, `Bitte beschreibe dein Projekt etwas ausführlicher (mind. ${MIN_DESCRIPTION_LENGTH} Zeichen).`);
+      setFieldError(description, `Bitte beschreibe dein Projekt etwas ausführlicher (mind. ${MIN_DESCRIPTION_LENGTH} Zeichen) oder lade ein PDF hoch.`);
       valid = false;
     } else {
       setFieldError(description, '');
@@ -229,7 +254,9 @@ const sourceOptions = [
     }
 
     const data = new FormData(form);
-    const payload = Object.fromEntries(data.entries());
+    if (!pdfInput.files?.[0]) {
+      data.delete('pdf');
+    }
 
     submitButton.disabled = true;
     submitButton.textContent = 'Wird gesendet …';
@@ -237,8 +264,7 @@ const sourceOptions = [
     try {
       const response = await fetch(webhookUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: data,
       });
 
       if (!response.ok) {

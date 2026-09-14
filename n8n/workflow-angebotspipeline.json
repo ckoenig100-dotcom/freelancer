@@ -47,11 +47,20 @@
             },
             {
               "id": "cond-beschreibung",
-              "leftValue": "={{$json.body.projektbeschreibung.length}}",
+              "leftValue": "={{ ($json.body.projektbeschreibung || '').length }}",
               "rightValue": 200,
               "operator": {
                 "type": "number",
                 "operation": "gt"
+              }
+            },
+            {
+              "id": "cond-pdf",
+              "leftValue": "={{ Boolean($binary && $binary.pdf) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
               }
             }
           ]
@@ -60,11 +69,23 @@
       }
     },
     {
+      "id": "code-claude-request",
+      "name": "Code - Claude Request vorbereiten",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 200],
+      "notes": "Liest ein hochgeladenes PDF (Feld 'pdf') als Base64 und baut daraus einen Claude-Document-Content-Block; sonst wird die Projektbeschreibung als Text mitgeschickt.",
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const data = $('Webhook - Anfrage empfangen').item.json.body;\nconst binary = $('Webhook - Anfrage empfangen').item.binary || {};\nconst hasPdf = Boolean(binary.pdf);\n\nconst systemPrompt = 'Du bist ein professioneller Angebotsschreiber für eine Webentwicklungs-Agentur. Erstelle aus der Anfrage ein konkretes Angebot mit 3-5 Leistungspunkten, realistischem Zeitplan und Preisvorschlag. Ton: professionell, konkret, keine leeren Versprechungen. Preis: Im Rahmen des angegebenen Budgets, aber nicht am oberen Rand. Falls eine Projektbeschreibung als PDF-Dokument mitgeschickt wurde, nutze dessen Inhalt als Grundlage. Gib deine Antwort ausschließlich als valides JSON-Objekt zurück (kein Markdown, kein Fließtext drumherum) mit genau diesen Feldern: summary (2-3 Sätze Zusammenfassung der Anfrage), leistungen (Array aus 3-5 kurzen Leistungspunkten), zeitplan (Text mit dem realistischen Zeitplan), preisspanne (Text mit dem Preisvorschlag).';\n\nconst meta = {\n  name: data.name,\n  email: data.email,\n  firma: data.firma || null,\n  budget: data.budget,\n  starttermin: data.starttermin || null,\n  quelle: data.quelle || null,\n};\n\nlet userContent;\nif (hasPdf) {\n  const buffer = await this.helpers.getBinaryDataBuffer(0, 'pdf');\n  const pdfBase64 = buffer.toString('base64');\n  userContent = [\n    { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } },\n    { type: 'text', text: 'Kundendaten (Projektbeschreibung siehe angehaengtes PDF):\\n' + JSON.stringify(meta) },\n  ];\n} else {\n  userContent = JSON.stringify({ ...meta, projektbeschreibung: data.projektbeschreibung });\n}\n\nconst claudeRequestBody = {\n  model: 'claude-sonnet-5',\n  max_tokens: 2000,\n  system: systemPrompt,\n  messages: [{ role: 'user', content: userContent }],\n};\n\nreturn { json: { claudeRequestBody, hasPdf } };"
+      }
+    },
+    {
       "id": "http-claude",
       "name": "Claude API - Angebotstext generieren",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [680, 200],
+      "position": [900, 200],
       "notes": "Benoetigt Credential 'Anthropic API Key' (Header Auth, Header-Name: x-api-key).",
       "parameters": {
         "method": "POST",
@@ -80,7 +101,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 2000, system: 'Du bist ein professioneller Angebotsschreiber für eine Webentwicklungs-Agentur. Erstelle aus der Anfrage ein konkretes Angebot mit 3-5 Leistungspunkten, realistischem Zeitplan und Preisvorschlag. Ton: professionell, konkret, keine leeren Versprechungen. Preis: Im Rahmen des angegebenen Budgets, aber nicht am oberen Rand. Gib deine Antwort ausschließlich als valides JSON-Objekt zurück (kein Markdown, kein Fließtext drumherum) mit genau diesen Feldern: summary (2-3 Sätze Zusammenfassung der Anfrage), leistungen (Array aus 3-5 kurzen Leistungspunkten), zeitplan (Text mit dem realistischen Zeitplan), preisspanne (Text mit dem Preisvorschlag).', messages: [ { role: 'user', content: JSON.stringify({ name: $('Webhook - Anfrage empfangen').item.json.body.name, email: $('Webhook - Anfrage empfangen').item.json.body.email, firma: $('Webhook - Anfrage empfangen').item.json.body.firma || null, budget: $('Webhook - Anfrage empfangen').item.json.body.budget, starttermin: $('Webhook - Anfrage empfangen').item.json.body.starttermin || null, quelle: $('Webhook - Anfrage empfangen').item.json.body.quelle || null, projektbeschreibung: $('Webhook - Anfrage empfangen').item.json.body.projektbeschreibung }) } ] }) }}",
+        "jsonBody": "={{ JSON.stringify($json.claudeRequestBody) }}",
         "options": {}
       },
       "credentials": {
@@ -95,7 +116,7 @@
       "position": [900, 200],
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const data = $('Webhook - Anfrage empfangen').item.json.body;\nconst claudeContent = $input.item.json.content || [];\nconst claudeTextBlock = claudeContent.find((block) => block.type === 'text');\nconst claudeRaw = claudeTextBlock ? claudeTextBlock.text : '';\nlet ai;\nlet jsonText = claudeRaw.trim();\nconst fenceMatch = jsonText.match(/^```(?:json)?\\s*([\\s\\S]*?)\\s*```$/);\nif (fenceMatch) {\n  jsonText = fenceMatch[1];\n}\n// Claude gibt gelegentlich echte Zeilenumbrueche innerhalb von String-Werten zurueck,\n// was gegen die JSON-Spec verstoesst (Steuerzeichen muessten als \\n escaped sein).\n// Da JSON ausserhalb von Strings Whitespace ignoriert, ist ein Ersetzen durch Leerzeichen sicher.\njsonText = jsonText.replace(/[\\r\\n]+/g, ' ');\ntry {\n  ai = JSON.parse(jsonText);\n} catch (e) {\n  ai = { summary: claudeRaw, leistungen: [], zeitplan: '', preisspanne: '' };\n}\n\nconst now = new Date();\nconst datum = now.toLocaleDateString('de-DE');\nconst angebotsnummer = `AN-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;\n\nconst FIRMA_NAME = 'Deine Firma GmbH';\nconst FIRMA_KONTAKT = 'kontakt@deine-firma.de - +49 30 1234567';\n\nconst leistungenHtml = (ai.leistungen || []).map((punkt) => `<li>${punkt}</li>`).join('');\n\nconst html = `<!DOCTYPE html>\n<html lang='de'>\n<head><meta charset='utf-8'><title>Angebot ${angebotsnummer}</title></head>\n<body style='font-family: Arial, sans-serif; color: #1e293b; max-width: 700px; margin: 0 auto;'>\n  <header style='border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 24px;'>\n    <h1 style='margin: 0;'>${FIRMA_NAME}</h1>\n    <p style='margin: 4px 0 0; color: #64748b;'>${FIRMA_KONTAKT}</p>\n  </header>\n  <p><strong>Datum:</strong> ${datum} &nbsp;|&nbsp; <strong>Angebotsnummer:</strong> ${angebotsnummer}</p>\n  <p>Sehr geehrte/r ${data.name},</p>\n  <p>${ai.summary || ''}</p>\n  <h3>Leistungsbeschreibung</h3>\n  <ul>${leistungenHtml}</ul>\n  <h3>Zeitplan</h3>\n  <p>${ai.zeitplan || ''}</p>\n  <h3>Preis</h3>\n  <p>${ai.preisspanne || ''}</p>\n  <h3>Zahlungsbedingungen</h3>\n  <p>50% Anzahlung, 50% bei Abnahme.</p>\n  <p><strong>Gueltigkeitsdauer:</strong> Dieses Angebot ist 14 Tage gueltig.</p>\n  <footer style='margin-top: 32px; border-top: 1px solid #e2e8f0; padding-top: 16px; color: #64748b; font-size: 0.85em;'>\n    <p>${FIRMA_NAME} - ${FIRMA_KONTAKT}</p>\n  </footer>\n</body>\n</html>`;\n\nconst indexHtmlBinary = await this.helpers.prepareBinaryData(Buffer.from(html, 'utf-8'), 'index.html', 'text/html');\n\nreturn {\n  json: {\n    name: data.name,\n    email: data.email,\n    firma: data.firma || '',\n    budget: data.budget,\n    projektbeschreibung: data.projektbeschreibung,\n    starttermin: data.starttermin || '',\n    quelle: data.quelle || '',\n    angebotsnummer,\n    datum,\n    summary: ai.summary || '',\n    leistungen: (ai.leistungen || []).join('\\n'),\n    zeitplan: ai.zeitplan || '',\n    preisspanne: ai.preisspanne || '',\n    html,\n  },\n  binary: {\n    index_html: indexHtmlBinary,\n  },\n};"
+        "jsCode": "const data = $('Webhook - Anfrage empfangen').item.json.body;\nconst claudeContent = $input.item.json.content || [];\nconst claudeTextBlock = claudeContent.find((block) => block.type === 'text');\nconst claudeRaw = claudeTextBlock ? claudeTextBlock.text : '';\nlet ai;\nlet jsonText = claudeRaw.trim();\nconst fenceMatch = jsonText.match(/^```(?:json)?\\s*([\\s\\S]*?)\\s*```$/);\nif (fenceMatch) {\n  jsonText = fenceMatch[1];\n}\n// Claude gibt gelegentlich echte Zeilenumbrueche innerhalb von String-Werten zurueck,\n// was gegen die JSON-Spec verstoesst (Steuerzeichen muessten als \\n escaped sein).\n// Da JSON ausserhalb von Strings Whitespace ignoriert, ist ein Ersetzen durch Leerzeichen sicher.\njsonText = jsonText.replace(/[\\r\\n]+/g, ' ');\ntry {\n  ai = JSON.parse(jsonText);\n} catch (e) {\n  ai = { summary: claudeRaw, leistungen: [], zeitplan: '', preisspanne: '' };\n}\n\nconst now = new Date();\nconst datum = now.toLocaleDateString('de-DE');\nconst angebotsnummer = `AN-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;\n\nconst FIRMA_NAME = 'Deine Firma GmbH';\nconst FIRMA_KONTAKT = 'kontakt@deine-firma.de - +49 30 1234567';\n\nconst leistungenHtml = (ai.leistungen || []).map((punkt) => `<li>${punkt}</li>`).join('');\n\nconst html = `<!DOCTYPE html>\n<html lang='de'>\n<head><meta charset='utf-8'><title>Angebot ${angebotsnummer}</title></head>\n<body style='font-family: Arial, sans-serif; color: #1e293b; max-width: 700px; margin: 0 auto;'>\n  <header style='border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 24px;'>\n    <h1 style='margin: 0;'>${FIRMA_NAME}</h1>\n    <p style='margin: 4px 0 0; color: #64748b;'>${FIRMA_KONTAKT}</p>\n  </header>\n  <p><strong>Datum:</strong> ${datum} &nbsp;|&nbsp; <strong>Angebotsnummer:</strong> ${angebotsnummer}</p>\n  <p>Sehr geehrte/r ${data.name},</p>\n  <p>${ai.summary || ''}</p>\n  <h3>Leistungsbeschreibung</h3>\n  <ul>${leistungenHtml}</ul>\n  <h3>Zeitplan</h3>\n  <p>${ai.zeitplan || ''}</p>\n  <h3>Preis</h3>\n  <p>${ai.preisspanne || ''}</p>\n  <h3>Zahlungsbedingungen</h3>\n  <p>50% Anzahlung, 50% bei Abnahme.</p>\n  <p><strong>Gueltigkeitsdauer:</strong> Dieses Angebot ist 14 Tage gueltig.</p>\n  <footer style='margin-top: 32px; border-top: 1px solid #e2e8f0; padding-top: 16px; color: #64748b; font-size: 0.85em;'>\n    <p>${FIRMA_NAME} - ${FIRMA_KONTAKT}</p>\n  </footer>\n</body>\n</html>`;\n\nconst indexHtmlBinary = await this.helpers.prepareBinaryData(Buffer.from(html, 'utf-8'), 'index.html', 'text/html');\n\nreturn {\n  json: {\n    name: data.name,\n    email: data.email,\n    firma: data.firma || '',\n    budget: data.budget,\n    projektbeschreibung: data.projektbeschreibung || '[Projektbeschreibung als PDF hochgeladen]',\n    starttermin: data.starttermin || '',\n    quelle: data.quelle || '',\n    angebotsnummer,\n    datum,\n    summary: ai.summary || '',\n    leistungen: (ai.leistungen || []).join('\\n'),\n    zeitplan: ai.zeitplan || '',\n    preisspanne: ai.preisspanne || '',\n    html,\n  },\n  binary: {\n    index_html: indexHtmlBinary,\n  },\n};"
       }
     },
     {
@@ -308,8 +329,13 @@
     },
     "IF - Qualifiziert?": {
       "main": [
-        [{ "node": "Claude API - Angebotstext generieren", "type": "main", "index": 0 }],
+        [{ "node": "Code - Claude Request vorbereiten", "type": "main", "index": 0 }],
         [{ "node": "SMTP - Absage senden", "type": "main", "index": 0 }]
+      ]
+    },
+    "Code - Claude Request vorbereiten": {
+      "main": [
+        [{ "node": "Claude API - Angebotstext generieren", "type": "main", "index": 0 }]
       ]
     },
     "Claude API - Angebotstext generieren": {

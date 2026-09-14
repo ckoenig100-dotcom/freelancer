@@ -10,24 +10,30 @@ Import from File. (Live-Instanz: bereits importiert und aktiv unter
    Kontaktformular und antwortet sofort (damit der 3-Tage-Wait im
    Hintergrund laufen kann, ohne den Browser-Request offen zu halten).
 2. **IF**: qualifiziert, wenn Budget != "< 1.000 EUR" ODER
-   Projektbeschreibung > 200 Zeichen (siehe CLAUDE.md Qualifizierungs-Regeln).
+   Projektbeschreibung > 200 Zeichen ODER ein PDF hochgeladen wurde
+   (siehe CLAUDE.md Qualifizierungs-Regeln).
    - FALSE → freundliche Absage-Mail mit Link zu Standard-Paketen.
-3. **Claude API**: generiert Zusammenfassung, Leistungspunkte, Zeitplan
+3. **Code**: baut den Request-Body für Claude. Wurde ein PDF
+   hochgeladen (Formularfeld `pdf`), wird es als Base64 gelesen und als
+   `document`-Content-Block mitgeschickt (Claude liest das PDF direkt,
+   keine eigene Text-Extraktion nötig); sonst wird die getippte
+   Projektbeschreibung als Text verwendet.
+4. **Claude API**: generiert Zusammenfassung, Leistungspunkte, Zeitplan
    und Preisspanne als striktes JSON.
-4. **Code**: baut daraus die finale Angebots-HTML-Vorlage.
-5. **HTTP Request**: schickt das HTML als Datei `index.html`
+5. **Code**: baut daraus die finale Angebots-HTML-Vorlage.
+6. **HTTP Request**: schickt das HTML als Datei `index.html`
    (multipart/form-data, Feld `files`) an Gotenberg und erhält die
    PDF-Binärdatei zurück.
-6. **SMTP**: verschickt das Angebot mit PDF-Anhang direkt an den Kunden
+7. **SMTP**: verschickt das Angebot mit PDF-Anhang direkt an den Kunden
    (BCC an `chris@agentic-code.at`, damit jedes rausgegangene Angebot
    mitgelesen wird).
-7. **Supabase (Postgres)**: speichert Anfrage + Status **und den
+8. **Supabase (Postgres)**: speichert Anfrage + Status **und den
    generierten Angebotsinhalt** (Zusammenfassung, Leistungen, Zeitplan,
    Preisspanne) im CRM — damit nachvollziehbar bleibt, woran man sich
    die 14 Tage Gültigkeit gebunden hat.
-8. **Wait**: 3 Tage → **SMTP**: Follow-up-Mail ("Kurze Nachfrage — gibt es offene Fragen?").
-9. **Wait**: 7 weitere Tage (Tag 10) → **SMTP**: Follow-up-Mail ("Dein Angebot läuft in 4 Tagen ab").
-10. **Wait**: 4 weitere Tage (Tag 14) → **Supabase**: Status auf `Abgelaufen` setzen (kein weiterer Kontakt).
+9. **Wait**: 3 Tage → **SMTP**: Follow-up-Mail ("Kurze Nachfrage — gibt es offene Fragen?").
+10. **Wait**: 7 weitere Tage (Tag 10) → **SMTP**: Follow-up-Mail ("Dein Angebot läuft in 4 Tagen ab").
+11. **Wait**: 4 weitere Tage (Tag 14) → **Supabase**: Status auf `Abgelaufen` setzen (kein weiterer Kontakt).
 
 ## Vorbedingung: Supabase-Tabelle anlegen
 
