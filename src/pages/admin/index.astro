@@ -1,0 +1,150 @@
+---
+export const prerender = false;
+
+import Layout from '../../layouts/Layout.astro';
+import { fetchAngebote, type AngebotAnfrage } from '../../lib/supabase';
+
+let angebote: AngebotAnfrage[] = [];
+let loadError: string | null = null;
+try {
+  angebote = await fetchAngebote();
+} catch (err) {
+  loadError = err instanceof Error ? err.message : 'Unbekannter Fehler beim Laden.';
+}
+
+const statusFilter = Astro.url.searchParams.get('status') ?? 'alle';
+const filtered =
+  statusFilter === 'alle' ? angebote : angebote.filter((a) => a.status === statusFilter);
+
+const countAll = angebote.length;
+const countQualifiziert = angebote.filter((a) => a.status === 'qualifiziert - Angebot gesendet').length;
+const countAbgelaufen = angebote.filter((a) => a.status === 'Abgelaufen').length;
+
+function formatBudget(value: string) {
+  const map: Record<string, string> = {
+    '<1000': '< 1.000 EUR',
+    '1000-5000': '1.000–5.000 EUR',
+    '5000-10000': '5.000–10.000 EUR',
+    '>10000': '> 10.000 EUR',
+  };
+  return map[value] ?? value;
+}
+
+function statusBadgeClass(status: string) {
+  if (status === 'Abgelaufen') return 'bg-slate-100 text-slate-600';
+  return 'bg-emerald-100 text-emerald-700';
+}
+---
+
+<Layout title="Admin — Angebote | AngebotsPipeline" description="Übersicht aller automatisch versendeten Angebote.">
+  <main class="mx-auto max-w-6xl px-6 py-10">
+    <div class="mb-8 flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight text-slate-900">Versendete Angebote</h1>
+        <p class="mt-1 text-sm text-slate-500">Automatisch von der Angebots-Pipeline erstellt und verschickt.</p>
+      </div>
+      <nav class="flex gap-2 text-sm">
+        <a
+          href="?status=alle"
+          class={`rounded-lg px-3 py-1.5 font-medium ${statusFilter === 'alle' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          Alle ({countAll})
+        </a>
+        <a
+          href="?status=qualifiziert - Angebot gesendet"
+          class={`rounded-lg px-3 py-1.5 font-medium ${statusFilter === 'qualifiziert - Angebot gesendet' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
+        >
+          Aktiv ({countQualifiziert})
+        </a>
+        <a
+          href="?status=Abgelaufen"
+          class={`rounded-lg px-3 py-1.5 font-medium ${statusFilter === 'Abgelaufen' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          Abgelaufen ({countAbgelaufen})
+        </a>
+      </nav>
+    </div>
+
+    {loadError && (
+      <p class="mb-6 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        Fehler beim Laden aus Supabase: {loadError}
+      </p>
+    )}
+
+    {!loadError && filtered.length === 0 && (
+      <p class="rounded-lg border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
+        Keine Angebote in dieser Ansicht.
+      </p>
+    )}
+
+    <div class="space-y-3">
+      {filtered.map((a) => (
+        <details class="group rounded-xl border border-slate-200 bg-white shadow-sm open:shadow-md">
+          <summary class="flex cursor-pointer list-none flex-wrap items-center gap-x-6 gap-y-2 px-5 py-4">
+            <span class="w-28 shrink-0 text-xs text-slate-400">{a.datum ?? '—'}</span>
+            <span class="min-w-[10rem] flex-1 font-medium text-slate-900">{a.name}</span>
+            <span class="text-sm text-slate-500">{a.firma || '—'}</span>
+            <span class="text-sm text-slate-500">{formatBudget(a.budget)}</span>
+            <span class="font-mono text-xs text-slate-400">{a.angebotsnummer ?? '—'}</span>
+            <span class={`rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClass(a.status)}`}>
+              {a.status}
+            </span>
+            <svg class="ml-auto h-4 w-4 text-slate-400 transition group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+            </svg>
+          </summary>
+          <div class="border-t border-slate-100 px-5 py-4 text-sm">
+            <dl class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+              <div>
+                <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">E-Mail</dt>
+                <dd class="mt-0.5 text-slate-700">
+                  <a href={`mailto:${a.email}`} class="text-emerald-700 hover:underline">{a.email}</a>
+                </dd>
+              </div>
+              <div>
+                <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Quelle</dt>
+                <dd class="mt-0.5 text-slate-700">{a.quelle || '—'}</dd>
+              </div>
+              <div>
+                <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Gewünschter Starttermin</dt>
+                <dd class="mt-0.5 text-slate-700">{a.starttermin || '—'}</dd>
+              </div>
+              <div>
+                <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Angelegt</dt>
+                <dd class="mt-0.5 text-slate-700">{new Date(a.created_at).toLocaleString('de-DE')}</dd>
+              </div>
+              <div class="sm:col-span-2">
+                <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Projektbeschreibung</dt>
+                <dd class="mt-0.5 whitespace-pre-wrap text-slate-700">{a.projektbeschreibung}</dd>
+              </div>
+              {a.angebot_summary && (
+                <div class="sm:col-span-2 border-t border-slate-100 pt-3">
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Von Claude generiertes Angebot</dt>
+                  <dd class="mt-1 text-slate-700">{a.angebot_summary}</dd>
+                </div>
+              )}
+              {a.angebot_leistungen && (
+                <div class="sm:col-span-2">
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Leistungen</dt>
+                  <dd class="mt-0.5 whitespace-pre-wrap text-slate-700">{a.angebot_leistungen}</dd>
+                </div>
+              )}
+              {a.angebot_zeitplan && (
+                <div>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Zeitplan</dt>
+                  <dd class="mt-0.5 text-slate-700">{a.angebot_zeitplan}</dd>
+                </div>
+              )}
+              {a.angebot_preisspanne && (
+                <div>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Preisspanne</dt>
+                  <dd class="mt-0.5 text-slate-700">{a.angebot_preisspanne}</dd>
+                </div>
+              )}
+            </dl>
+          </div>
+        </details>
+      ))}
+    </div>
+  </main>
+</Layout>
