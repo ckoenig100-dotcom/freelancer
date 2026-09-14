@@ -245,7 +245,7 @@ const sourceOptions = [
         throw new Error(`Webhook antwortete mit Status ${response.status}`);
       }
 
-      window.location.href = '/danke';
+      window.location.href = `${import.meta.env.BASE_URL}danke`;
     } catch (error) {
       console.error('Fehler beim Senden des Formulars:', error);
       formError.textContent = 'Beim Senden ist ein Fehler aufgetreten. Bitte versuche es erneut.';

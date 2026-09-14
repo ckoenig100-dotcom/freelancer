@@ -4,5 +4,7 @@ import tailwind from '@astrojs/tailwind';
 
 // https://astro.build/config
 export default defineConfig({
+  site: 'https://ckoenig100-dotcom.github.io',
+  base: '/freelancer/',
   integrations: [tailwind()],
 });
