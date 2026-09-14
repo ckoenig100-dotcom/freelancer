@@ -35,9 +35,19 @@ Import from File. (Live-Instanz: bereits importiert und aktiv unter
 6. **HTTP Request**: schickt das HTML als Datei `index.html`
    (multipart/form-data, Feld `files`) an Gotenberg und erhält die
    PDF-Binärdatei zurück.
-7. **SMTP**: verschickt das Angebot mit PDF-Anhang direkt an den Kunden
-   (BCC an `chris@agentic-code.at`, damit jedes rausgegangene Angebot
-   mitgelesen wird).
+7. **Code**: baut aus dem Angebotsinhalt zusätzlich eine `CLAUDE.md`
+   (Markdown) und behält das bereits konvertierte PDF als zweites
+   Binary bei.
+7a. **SMTP**: verschickt das Angebot mit PDF-Anhang direkt an den
+    Kunden.
+7b. **SMTP**: verschickt parallel (nicht sequenziell verkettet — der
+    `emailSend`-Node gibt in seinem Output nur `{ json: info }` zurück
+    und verwirft dabei jegliches Binary, eine Verkettung würde also den
+    Anhang der zweiten Mail verlieren) eine interne Kopie an
+    `chris@agentic-code.at` mit PDF **und** `CLAUDE.md` im Anhang, damit
+    jedes rausgegangene Angebot inhaltlich mitgelesen werden kann. Nur
+    dieser Zweig führt weiter zu Supabase (nicht beide, sonst würde der
+    Insert doppelt ausgeführt).
 8. **Supabase (Postgres)**: speichert Anfrage + Status **und den
    generierten Angebotsinhalt** (Zusammenfassung, Leistungen, Zeitplan,
    Preisspanne) im CRM — damit nachvollziehbar bleibt, woran man sich
@@ -137,6 +147,14 @@ Social-Media-Content-Maschine-Projekt).
   (lieferten inkonsistente Ergebnisse) — solche Logik gehört in einen
   Code-Node, der Node fuellt dann nur ein einfaches Boolean-Feld, das
   die IF-Node abfragt.
+- **`n8n-nodes-base.emailSend` verwirft im Output jegliches Binary** —
+  der Node gibt nur `{ json: info }` (das SMTP-Sendeergebnis) zurück,
+  nicht die Eingabedaten. Zwei E-Mails mit Anhang direkt hintereinander
+  zu verketten (Mail 1 → Mail 2) verliert dadurch den Anhang bei Mail 2.
+  Beide Mail-Nodes müssen stattdessen parallel vom selben Code-Node
+  abzweigen, der die Binaries bereithält (siehe `Code - CLAUDE.md
+  erstellen` → `SMTP - Angebot senden` + `SMTP - Interne Kopie
+  senden`).
 - Alle Nodes, die auf Formulardaten zugreifen (`Code - Claude Request
   vorbereiten`, `Code - HTML-Vorlage erstellen`), referenzieren
   `$('Code - Projektbeschreibung finalisieren')` statt direkt den

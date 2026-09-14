@@ -11,7 +11,10 @@
       "name": "Webhook - Anfrage empfangen",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 300],
+      "position": [
+        240,
+        300
+      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "anfrage",
@@ -26,7 +29,10 @@
       "name": "Code - Referenzseite validieren",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [240, 500],
+      "position": [
+        240,
+        500
+      ],
       "notes": "SSRF-Basisschutz: blockt PDF-Faelle, leere URLs, nicht-http(s)-Schemata und offensichtliche interne/private Hosts, bevor ueberhaupt ein Fetch versucht wird.",
       "parameters": {
         "mode": "runOnceForEachItem",
@@ -38,17 +44,27 @@
       "name": "IF - Referenzseite sicher abrufbar?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [340, 500],
+      "position": [
+        340,
+        500
+      ],
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
           "combinator": "and",
           "conditions": [
             {
               "id": "cond-url-safe",
               "leftValue": "={{ $json.shouldFetchReferenzseite }}",
               "rightValue": true,
-              "operator": { "type": "boolean", "operation": "equals" }
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
             }
           ]
         },
@@ -60,7 +76,10 @@
       "name": "HTTP Request - Referenzseite abrufen",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [460, 500],
+      "position": [
+        460,
+        500
+      ],
       "onError": "continueRegularOutput",
       "parameters": {
         "method": "GET",
@@ -80,17 +99,27 @@
       "name": "IF - Abruf erfolgreich?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [680, 500],
+      "position": [
+        680,
+        500
+      ],
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
           "combinator": "and",
           "conditions": [
             {
               "id": "cond-fetch-ok",
               "leftValue": "={{ $json.error === undefined && typeof $json.data === 'string' && $json.data.length > 0 }}",
               "rightValue": true,
-              "operator": { "type": "boolean", "operation": "equals" }
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
             }
           ]
         },
@@ -102,7 +131,10 @@
       "name": "Code - Claude Zusammenfassung vorbereiten",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [900, 500],
+      "position": [
+        900,
+        500
+      ],
       "parameters": {
         "mode": "runOnceForEachItem",
         "jsCode": "const html = ($input.item.json.data || '').slice(0, 60000);\nconst systemPrompt = 'Du bist ein Business-Analyst. Fasse den Inhalt der folgenden Webseite in einer managementtauglichen Projektbeschreibung zusammen: professionell, praegnant, auf Deutsch, im Fliesstext ohne Aufzaehlungen, maximal 500 Woerter. Fokus: Geschaeftsfeld, Produkt oder Dienstleistung, Zielgruppe und Fakten, die fuer ein individuelles Angebot nuetzlich sind. Gib ausschliesslich den Fliesstext der Zusammenfassung zurueck, ohne Einleitung, ohne Anfuehrungszeichen, ohne Markdown.';\n\nconst claudeRequestBody = {\n  model: 'claude-sonnet-5',\n  max_tokens: 1200,\n  system: systemPrompt,\n  messages: [{ role: 'user', content: `HTML-Inhalt der Referenzseite:\\n\\n${html}` }],\n};\n\nreturn { json: { claudeRequestBody } };"
@@ -113,7 +145,10 @@
       "name": "Claude API - Referenzseite zusammenfassen",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1120, 500],
+      "position": [
+        1120,
+        500
+      ],
       "notes": "Benoetigt Credential 'Anthropic API Key' (Header Auth, Header-Name: x-api-key).",
       "parameters": {
         "method": "POST",
@@ -123,8 +158,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "anthropic-version", "value": "2023-06-01" },
-            { "name": "content-type", "value": "application/json" }
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -133,7 +174,9 @@
         "options": {}
       },
       "credentials": {
-        "httpHeaderAuth": { "name": "Anthropic API Key" }
+        "httpHeaderAuth": {
+          "name": "Anthropic API Key"
+        }
       }
     },
     {
@@ -141,7 +184,10 @@
       "name": "Code - Zusammenfassung uebernehmen",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1340, 500],
+      "position": [
+        1340,
+        500
+      ],
       "parameters": {
         "mode": "runOnceForEachItem",
         "jsCode": "const content = $input.item.json.content || [];\nconst textBlock = content.find((b) => b.type === 'text');\nlet summary = textBlock ? textBlock.text.trim() : '';\n\nconst words = summary.split(/\\s+/).filter(Boolean);\nif (words.length > 520) {\n  summary = words.slice(0, 500).join(' ') + '\\u2026';\n}\n\nreturn { json: { aggregierteBeschreibung: summary || '[Referenzseite konnte nicht zusammengefasst werden]' } };"
@@ -152,7 +198,10 @@
       "name": "Code - Projektbeschreibung finalisieren",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1560, 400],
+      "position": [
+        1560,
+        400
+      ],
       "notes": "Universeller Konvergenzpunkt: laeuft fuer JEDE Anfrage (Text, PDF oder Referenzseite). Nutzt die per Referenzseite aggregierte Beschreibung, falls vorhanden, sonst die Original-Formulardaten.",
       "parameters": {
         "mode": "runOnceForEachItem",
@@ -164,7 +213,10 @@
       "name": "IF - Qualifiziert?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1780, 300],
+      "position": [
+        1780,
+        300
+      ],
       "parameters": {
         "conditions": {
           "options": {
@@ -211,7 +263,10 @@
       "name": "Code - Claude Request vorbereiten",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [680, 200],
+      "position": [
+        680,
+        200
+      ],
       "notes": "Liest ein hochgeladenes PDF (Feld 'pdf') als Base64 und baut daraus einen Claude-Document-Content-Block; sonst wird die Projektbeschreibung als Text mitgeschickt.",
       "parameters": {
         "mode": "runOnceForEachItem",
@@ -223,7 +278,10 @@
       "name": "Claude API - Angebotstext generieren",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [900, 200],
+      "position": [
+        900,
+        200
+      ],
       "notes": "Benoetigt Credential 'Anthropic API Key' (Header Auth, Header-Name: x-api-key).",
       "parameters": {
         "method": "POST",
@@ -233,8 +291,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "anthropic-version", "value": "2023-06-01" },
-            { "name": "content-type", "value": "application/json" }
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -243,7 +307,9 @@
         "options": {}
       },
       "credentials": {
-        "httpHeaderAuth": { "name": "Anthropic API Key" }
+        "httpHeaderAuth": {
+          "name": "Anthropic API Key"
+        }
       }
     },
     {
@@ -251,7 +317,10 @@
       "name": "Code - HTML-Vorlage erstellen",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [900, 200],
+      "position": [
+        900,
+        200
+      ],
       "parameters": {
         "mode": "runOnceForEachItem",
         "jsCode": "const data = $('Code - Projektbeschreibung finalisieren').item.json.body;\nconst claudeContent = $input.item.json.content || [];\nconst claudeTextBlock = claudeContent.find((block) => block.type === 'text');\nconst claudeRaw = claudeTextBlock ? claudeTextBlock.text : '';\nlet ai;\nlet jsonText = claudeRaw.trim();\nconst fenceMatch = jsonText.match(/^```(?:json)?\\s*([\\s\\S]*?)\\s*```$/);\nif (fenceMatch) {\n  jsonText = fenceMatch[1];\n}\n// Claude gibt gelegentlich echte Zeilenumbrueche innerhalb von String-Werten zurueck,\n// was gegen die JSON-Spec verstoesst (Steuerzeichen muessten als \\n escaped sein).\n// Da JSON ausserhalb von Strings Whitespace ignoriert, ist ein Ersetzen durch Leerzeichen sicher.\njsonText = jsonText.replace(/[\\r\\n]+/g, ' ');\ntry {\n  ai = JSON.parse(jsonText);\n} catch (e) {\n  ai = { summary: claudeRaw, leistungen: [], zeitplan: '', preisspanne: '' };\n}\n\nconst now = new Date();\nconst datum = now.toLocaleDateString('de-DE');\nconst angebotsnummer = `AN-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;\n\nconst FIRMA_NAME = 'Agentic-Code e.U.';\nconst FIRMA_KONTAKT = 'chris@agentic-code.at - +43 678 1255 005';\n\nconst leistungenHtml = (ai.leistungen || []).map((punkt) => `<li>${punkt}</li>`).join('');\n\nconst html = `<!DOCTYPE html>\n<html lang='de'>\n<head><meta charset='utf-8'><title>Angebot ${angebotsnummer}</title></head>\n<body style='font-family: Arial, sans-serif; color: #1e293b; max-width: 700px; margin: 0 auto;'>\n  <header style='border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 24px;'>\n    <h1 style='margin: 0;'>${FIRMA_NAME}</h1>\n    <p style='margin: 4px 0 0; color: #64748b;'>${FIRMA_KONTAKT}</p>\n  </header>\n  <p><strong>Datum:</strong> ${datum} &nbsp;|&nbsp; <strong>Angebotsnummer:</strong> ${angebotsnummer}</p>\n  <p>Sehr geehrte/r ${data.name},</p>\n  <p>${ai.summary || ''}</p>\n  <h3>Leistungsbeschreibung</h3>\n  <ul>${leistungenHtml}</ul>\n  <h3>Zeitplan</h3>\n  <p>${ai.zeitplan || ''}</p>\n  <h3>Preis</h3>\n  <p>${ai.preisspanne || ''}</p>\n  <h3>Zahlungsbedingungen</h3>\n  <p>50% Anzahlung, 50% bei Abnahme.</p>\n  <p><strong>Gueltigkeitsdauer:</strong> Dieses Angebot ist 14 Tage gueltig.</p>\n  <footer style='margin-top: 32px; border-top: 1px solid #e2e8f0; padding-top: 16px; color: #64748b; font-size: 0.85em;'>\n    <p>${FIRMA_NAME} - ${FIRMA_KONTAKT}</p>\n  </footer>\n</body>\n</html>`;\n\nconst indexHtmlBinary = await this.helpers.prepareBinaryData(Buffer.from(html, 'utf-8'), 'index.html', 'text/html');\n\nreturn {\n  json: {\n    name: data.name,\n    email: data.email,\n    firma: data.firma || '',\n    budget: data.budget,\n    projektbeschreibung: data.projektbeschreibung || '[Projektbeschreibung als PDF hochgeladen]',\n    starttermin: data.starttermin || '',\n    quelle: data.quelle || '',\n    angebotsnummer,\n    datum,\n    summary: ai.summary || '',\n    leistungen: (ai.leistungen || []).join('\\n'),\n    zeitplan: ai.zeitplan || '',\n    preisspanne: ai.preisspanne || '',\n    html,\n  },\n  binary: {\n    index_html: indexHtmlBinary,\n  },\n};"
@@ -262,7 +331,10 @@
       "name": "HTML zu PDF konvertieren",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1120, 200],
+      "position": [
+        1120,
+        200
+      ],
       "notes": "PDF_SERVICE_URL zeigt auf Gotenberg (Chromium HTML-Route). Gotenberg erwartet multipart/form-data mit einer Datei namens 'index.html' im Feld 'files'.",
       "parameters": {
         "method": "POST",
@@ -292,19 +364,23 @@
       "name": "SMTP - Angebot senden",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [1340, 200],
+      "position": [
+        1340,
+        200
+      ],
       "parameters": {
         "fromEmail": "={{$env.SMTP_FROM_EMAIL}}",
         "toEmail": "={{$('Code - HTML-Vorlage erstellen').item.json.email}}",
         "subject": "Dein individuelles Angebot",
         "text": "=Hallo {{ $('Code - HTML-Vorlage erstellen').item.json.name }},\n\nvielen Dank fuer deine Anfrage! Im Anhang findest du dein individuelles Angebot (Angebotsnummer {{ $('Code - HTML-Vorlage erstellen').item.json.angebotsnummer }}).\n\nDas Angebot ist 14 Tage gueltig. Bei Fragen melde dich gerne jederzeit.\n\nViele Gruesse",
         "options": {
-          "fileAttachments": "data",
-          "bccEmail": "chris@agentic-code.at"
+          "fileAttachments": "data"
         }
       },
       "credentials": {
-        "smtp": { "name": "SMTP Account" }
+        "smtp": {
+          "name": "SMTP Account"
+        }
       }
     },
     {
@@ -312,12 +388,23 @@
       "name": "Supabase - CRM speichern",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [1560, 200],
+      "position": [
+        1560,
+        200
+      ],
       "notes": "Tabelle 'public.angebot_anfragen' muss vorher per SQL angelegt werden (siehe n8n/README.md).",
       "parameters": {
         "operation": "insert",
-        "schema": { "__rl": true, "mode": "list", "value": "public" },
-        "table": { "__rl": true, "mode": "list", "value": "angebot_anfragen" },
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": "angebot_anfragen"
+        },
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
@@ -342,7 +429,10 @@
         "options": {}
       },
       "credentials": {
-        "postgres": { "id": "vjiZaBlm60eFQan6", "name": "Supabase Postgres (freelancer)" }
+        "postgres": {
+          "id": "vjiZaBlm60eFQan6",
+          "name": "Supabase Postgres (freelancer)"
+        }
       }
     },
     {
@@ -350,7 +440,10 @@
       "name": "Wait - 3 Tage",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [1780, 200],
+      "position": [
+        1780,
+        200
+      ],
       "parameters": {
         "resume": "timeInterval",
         "amount": 3,
@@ -362,7 +455,10 @@
       "name": "SMTP - Follow-up Tag 3",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [2000, 200],
+      "position": [
+        2000,
+        200
+      ],
       "parameters": {
         "fromEmail": "={{$env.SMTP_FROM_EMAIL}}",
         "toEmail": "={{$('Code - HTML-Vorlage erstellen').item.json.email}}",
@@ -370,7 +466,9 @@
         "text": "=Hallo {{ $('Code - HTML-Vorlage erstellen').item.json.name }},\n\nvor ein paar Tagen haben wir dir unser Angebot (Nr. {{ $('Code - HTML-Vorlage erstellen').item.json.angebotsnummer }}) zugeschickt. Gibt es noch offene Fragen dazu, oder koennen wir sonst irgendwie unterstuetzen?\n\nViele Gruesse"
       },
       "credentials": {
-        "smtp": { "name": "SMTP Account" }
+        "smtp": {
+          "name": "SMTP Account"
+        }
       }
     },
     {
@@ -378,7 +476,10 @@
       "name": "Wait - bis Tag 10",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [2220, 200],
+      "position": [
+        2220,
+        200
+      ],
       "notes": "7 weitere Tage nach dem Tag-3-Follow-up = Tag 10 seit Angebotserstellung.",
       "parameters": {
         "resume": "timeInterval",
@@ -391,7 +492,10 @@
       "name": "SMTP - Follow-up Tag 10",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [2440, 200],
+      "position": [
+        2440,
+        200
+      ],
       "parameters": {
         "fromEmail": "={{$env.SMTP_FROM_EMAIL}}",
         "toEmail": "={{$('Code - HTML-Vorlage erstellen').item.json.email}}",
@@ -399,7 +503,9 @@
         "text": "=Hallo {{ $('Code - HTML-Vorlage erstellen').item.json.name }},\n\nnur eine kurze Erinnerung: Dein Angebot (Nr. {{ $('Code - HTML-Vorlage erstellen').item.json.angebotsnummer }}) laeuft in 4 Tagen ab. Falls du starten moechtest oder noch Fragen hast, melde dich gerne bei uns.\n\nViele Gruesse"
       },
       "credentials": {
-        "smtp": { "name": "SMTP Account" }
+        "smtp": {
+          "name": "SMTP Account"
+        }
       }
     },
     {
@@ -407,24 +513,39 @@
       "name": "Supabase - Tag 10 markieren",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [2550, 200],
+      "position": [
+        2550,
+        200
+      ],
       "parameters": {
         "operation": "update",
-        "schema": { "__rl": true, "mode": "list", "value": "public" },
-        "table": { "__rl": true, "mode": "list", "value": "angebot_anfragen" },
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": "angebot_anfragen"
+        },
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
             "id": "={{ $('Supabase - CRM speichern').item.json.id }}",
             "tag10_erinnerung_gesendet": true
           },
-          "matchingColumns": ["id"],
+          "matchingColumns": [
+            "id"
+          ],
           "schema": []
         },
         "options": {}
       },
       "credentials": {
-        "postgres": { "name": "Supabase Postgres (freelancer)" }
+        "postgres": {
+          "name": "Supabase Postgres (freelancer)"
+        }
       }
     },
     {
@@ -432,7 +553,10 @@
       "name": "Wait - bis Tag 14",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [2660, 200],
+      "position": [
+        2660,
+        200
+      ],
       "notes": "4 weitere Tage nach dem Tag-10-Follow-up = Tag 14 seit Angebotserstellung.",
       "parameters": {
         "resume": "timeInterval",
@@ -445,12 +569,23 @@
       "name": "Supabase - Aktuellen Status abfragen",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [2880, 200],
+      "position": [
+        2880,
+        200
+      ],
       "notes": "Prueft vor dem Ablauf-Update, ob der Kunde zwischenzeitlich (manuell im Admin-Bereich) schon Angenommen/Abgelehnt gesetzt wurde.",
       "parameters": {
         "operation": "select",
-        "schema": { "__rl": true, "mode": "list", "value": "public" },
-        "table": { "__rl": true, "mode": "list", "value": "angebot_anfragen" },
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": "angebot_anfragen"
+        },
         "where": {
           "values": [
             {
@@ -463,7 +598,9 @@
         "options": {}
       },
       "credentials": {
-        "postgres": { "name": "Supabase Postgres (freelancer)" }
+        "postgres": {
+          "name": "Supabase Postgres (freelancer)"
+        }
       }
     },
     {
@@ -471,7 +608,10 @@
       "name": "IF - Noch nicht entschieden?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [3100, 200],
+      "position": [
+        3100,
+        200
+      ],
       "notes": "Nur auf 'Abgelaufen' setzen, wenn der Kunde nicht zwischenzeitlich schon Angenommen/Abgelehnt bekommen hat.",
       "parameters": {
         "conditions": {
@@ -501,25 +641,40 @@
       "name": "Supabase - Status Abgelaufen",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [3320, 140],
+      "position": [
+        3320,
+        140
+      ],
       "notes": "Kein weiterer Kontakt zum Kunden - nur Status-Update im CRM.",
       "parameters": {
         "operation": "update",
-        "schema": { "__rl": true, "mode": "list", "value": "public" },
-        "table": { "__rl": true, "mode": "list", "value": "angebot_anfragen" },
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": "angebot_anfragen"
+        },
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
             "id": "={{ $('Supabase - CRM speichern').item.json.id }}",
             "status": "Abgelaufen"
           },
-          "matchingColumns": ["id"],
+          "matchingColumns": [
+            "id"
+          ],
           "schema": []
         },
         "options": {}
       },
       "credentials": {
-        "postgres": { "name": "Supabase Postgres (freelancer)" }
+        "postgres": {
+          "name": "Supabase Postgres (freelancer)"
+        }
       }
     },
     {
@@ -527,7 +682,10 @@
       "name": "SMTP - Absage senden",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [680, 460],
+      "position": [
+        680,
+        460
+      ],
       "notes": "Sobald es eine Standard-Pakete-Seite gibt: STANDARD_PAKETE_URL als ENV-Variable setzen und den Link wieder in den Text aufnehmen.",
       "parameters": {
         "fromEmail": "={{$env.SMTP_FROM_EMAIL}}",
@@ -536,133 +694,351 @@
         "text": "=Hallo {{ $json.body.name }},\n\nvielen Dank fuer dein Interesse! Fuer Projekte in diesem Umfang haben wir bereits passende Standard-Pakete, die schneller und guenstiger fuer dich sind als ein individuelles Angebot. Antworte gerne auf diese E-Mail oder melde dich direkt bei uns, dann schicken wir dir die passenden Infos zu.\n\nBei weiteren Fragen sind wir jederzeit fuer dich da.\n\nViele Gruesse"
       },
       "credentials": {
-        "smtp": { "name": "SMTP Account" }
+        "smtp": {
+          "name": "SMTP Account"
+        }
+      }
+    },
+    {
+      "id": "code-claude-md",
+      "name": "Code - CLAUDE.md erstellen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1230,
+        200
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const offer = $('Code - HTML-Vorlage erstellen').item.json;\nconst pdfBinary = $input.item.binary.data;\n\nconst leistungenList = (offer.leistungen || '')\n  .split('\\n')\n  .filter(Boolean)\n  .map((punkt) => `- ${punkt}`)\n  .join('\\n');\n\nconst claudeMd = `# Angebot ${offer.angebotsnummer}\n\n**Datum:** ${offer.datum}\n**Kunde:** ${offer.name} (${offer.email})\n${offer.firma ? `**Firma:** ${offer.firma}\\n` : ''}**Budget:** ${offer.budget}\n**Starttermin:** ${offer.starttermin || '-'}\n**Quelle:** ${offer.quelle || '-'}\n\n## Projektbeschreibung\n\n${offer.projektbeschreibung}\n\n## Zusammenfassung\n\n${offer.summary}\n\n## Leistungen\n\n${leistungenList}\n\n## Zeitplan\n\n${offer.zeitplan}\n\n## Preisspanne\n\n${offer.preisspanne}\n`;\n\nconst claudeMdBinary = await this.helpers.prepareBinaryData(\n  Buffer.from(claudeMd, 'utf-8'),\n  'CLAUDE.md',\n  'text/markdown',\n);\n\nreturn {\n  json: $input.item.json,\n  binary: {\n    data: pdfBinary,\n    claude_md: claudeMdBinary,\n  },\n};"
+      }
+    },
+    {
+      "id": "smtp-interne-kopie",
+      "name": "SMTP - Interne Kopie senden",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1560,
+        200
+      ],
+      "parameters": {
+        "fromEmail": "={{$env.SMTP_FROM_EMAIL}}",
+        "toEmail": "chris@agentic-code.at",
+        "subject": "=Kopie: Angebot an {{ $('Code - HTML-Vorlage erstellen').item.json.name }} ({{ $('Code - HTML-Vorlage erstellen').item.json.angebotsnummer }})",
+        "text": "=Interne Kopie des Angebots an {{ $('Code - HTML-Vorlage erstellen').item.json.name }} ({{ $('Code - HTML-Vorlage erstellen').item.json.email }}).\n\nIm Anhang: das PDF-Angebot sowie eine CLAUDE.md mit dem vollstaendigen Angebotsinhalt als Markdown.",
+        "options": {
+          "fileAttachments": "data,claude_md"
+        }
+      },
+      "credentials": {
+        "smtp": {
+          "name": "SMTP Account"
+        }
       }
     }
   ],
   "connections": {
     "Webhook - Anfrage empfangen": {
       "main": [
-        [{ "node": "Code - Referenzseite validieren", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Code - Referenzseite validieren",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Code - Referenzseite validieren": {
       "main": [
-        [{ "node": "IF - Referenzseite sicher abrufbar?", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "IF - Referenzseite sicher abrufbar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "IF - Referenzseite sicher abrufbar?": {
       "main": [
-        [{ "node": "HTTP Request - Referenzseite abrufen", "type": "main", "index": 0 }],
-        [{ "node": "Code - Projektbeschreibung finalisieren", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "HTTP Request - Referenzseite abrufen",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - Projektbeschreibung finalisieren",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "HTTP Request - Referenzseite abrufen": {
       "main": [
-        [{ "node": "IF - Abruf erfolgreich?", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "IF - Abruf erfolgreich?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "IF - Abruf erfolgreich?": {
       "main": [
-        [{ "node": "Code - Claude Zusammenfassung vorbereiten", "type": "main", "index": 0 }],
-        [{ "node": "Code - Projektbeschreibung finalisieren", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Code - Claude Zusammenfassung vorbereiten",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - Projektbeschreibung finalisieren",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Code - Claude Zusammenfassung vorbereiten": {
       "main": [
-        [{ "node": "Claude API - Referenzseite zusammenfassen", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Claude API - Referenzseite zusammenfassen",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Claude API - Referenzseite zusammenfassen": {
       "main": [
-        [{ "node": "Code - Zusammenfassung uebernehmen", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Code - Zusammenfassung uebernehmen",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Code - Zusammenfassung uebernehmen": {
       "main": [
-        [{ "node": "Code - Projektbeschreibung finalisieren", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Code - Projektbeschreibung finalisieren",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Code - Projektbeschreibung finalisieren": {
       "main": [
-        [{ "node": "IF - Qualifiziert?", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "IF - Qualifiziert?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "IF - Qualifiziert?": {
       "main": [
-        [{ "node": "Code - Claude Request vorbereiten", "type": "main", "index": 0 }],
-        [{ "node": "SMTP - Absage senden", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Code - Claude Request vorbereiten",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "SMTP - Absage senden",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Code - Claude Request vorbereiten": {
       "main": [
-        [{ "node": "Claude API - Angebotstext generieren", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Claude API - Angebotstext generieren",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Claude API - Angebotstext generieren": {
       "main": [
-        [{ "node": "Code - HTML-Vorlage erstellen", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Code - HTML-Vorlage erstellen",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Code - HTML-Vorlage erstellen": {
       "main": [
-        [{ "node": "HTML zu PDF konvertieren", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "HTML zu PDF konvertieren",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "HTML zu PDF konvertieren": {
       "main": [
-        [{ "node": "SMTP - Angebot senden", "type": "main", "index": 0 }]
-      ]
-    },
-    "SMTP - Angebot senden": {
-      "main": [
-        [{ "node": "Supabase - CRM speichern", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Code - CLAUDE.md erstellen",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Supabase - CRM speichern": {
       "main": [
-        [{ "node": "Wait - 3 Tage", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Wait - 3 Tage",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Wait - 3 Tage": {
       "main": [
-        [{ "node": "SMTP - Follow-up Tag 3", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "SMTP - Follow-up Tag 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "SMTP - Follow-up Tag 3": {
       "main": [
-        [{ "node": "Wait - bis Tag 10", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Wait - bis Tag 10",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Wait - bis Tag 10": {
       "main": [
-        [{ "node": "SMTP - Follow-up Tag 10", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "SMTP - Follow-up Tag 10",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "SMTP - Follow-up Tag 10": {
       "main": [
-        [{ "node": "Supabase - Tag 10 markieren", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Supabase - Tag 10 markieren",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Supabase - Tag 10 markieren": {
       "main": [
-        [{ "node": "Wait - bis Tag 14", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Wait - bis Tag 14",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Wait - bis Tag 14": {
       "main": [
-        [{ "node": "Supabase - Aktuellen Status abfragen", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Supabase - Aktuellen Status abfragen",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Supabase - Aktuellen Status abfragen": {
       "main": [
-        [{ "node": "IF - Noch nicht entschieden?", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "IF - Noch nicht entschieden?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "IF - Noch nicht entschieden?": {
       "main": [
-        [{ "node": "Supabase - Status Abgelaufen", "type": "main", "index": 0 }],
+        [
+          {
+            "node": "Supabase - Status Abgelaufen",
+            "type": "main",
+            "index": 0
+          }
+        ],
         []
+      ]
+    },
+    "Code - CLAUDE.md erstellen": {
+      "main": [
+        [
+          {
+            "node": "SMTP - Angebot senden",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "SMTP - Interne Kopie senden",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SMTP - Interne Kopie senden": {
+      "main": [
+        [
+          {
+            "node": "Supabase - CRM speichern",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   }
