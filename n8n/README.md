@@ -34,14 +34,15 @@ Import from File. (Live-Instanz: bereits importiert und aktiv unter
 9. **Wait**: 3 Tage → **SMTP**: Follow-up-Mail ("Kurze Nachfrage — gibt es offene Fragen?").
 10. **Wait**: 7 weitere Tage (Tag 10) → **SMTP**: Follow-up-Mail ("Dein Angebot läuft in 4 Tagen ab")
     → **Supabase**: `tag10_erinnerung_gesendet = true` setzen (Sichtbarkeit im Admin-Bereich).
-11. **Wait**: 4 weitere Tage (Tag 14) → **Supabase**: Status auf `Abgelaufen` setzen (kein weiterer Kontakt).
+11. **Wait**: 4 weitere Tage (Tag 14) → **Supabase**: aktuellen Status abfragen
+    → **IF**: nur falls Status noch `qualifiziert - Angebot gesendet` ist
+    → **Supabase**: Status auf `Abgelaufen` setzen (kein weiterer Kontakt).
 
 Der Admin-Bereich (`/admin` der Astro-Seite) erlaubt außerdem, ein Angebot
 manuell als `Angenommen` oder `Abgelehnt` zu markieren, sobald der Kunde
-reagiert hat — unabhängig vom automatischen Follow-up. **Achtung:** Die
-Tag-14-Node setzt den Status aktuell unbedingt auf `Abgelaufen` zurück,
-auch wenn zwischenzeitlich manuell `Angenommen`/`Abgelehnt` gesetzt wurde.
-Falls das stört, müsste die Tag-14-Node den aktuellen Status vorher prüfen.
+reagiert hat — unabhängig vom automatischen Follow-up. Die Tag-14-Node
+prüft davor den aktuellen Status und überschreibt eine bereits manuell
+gesetzte Entscheidung nicht mehr mit `Abgelaufen`.
 
 ## Vorbedingung: Supabase-Tabelle anlegen
 

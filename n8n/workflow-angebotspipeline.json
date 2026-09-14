@@ -303,11 +303,67 @@
       }
     },
     {
+      "id": "supabase-get-status",
+      "name": "Supabase - Aktuellen Status abfragen",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [2880, 200],
+      "notes": "Prueft vor dem Ablauf-Update, ob der Kunde zwischenzeitlich (manuell im Admin-Bereich) schon Angenommen/Abgelehnt gesetzt wurde.",
+      "parameters": {
+        "operation": "select",
+        "schema": { "__rl": true, "mode": "list", "value": "public" },
+        "table": { "__rl": true, "mode": "list", "value": "angebot_anfragen" },
+        "where": {
+          "values": [
+            {
+              "column": "id",
+              "condition": "equal",
+              "value": "={{ $('Supabase - CRM speichern').item.json.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": { "name": "Supabase Postgres (freelancer)" }
+      }
+    },
+    {
+      "id": "if-noch-nicht-entschieden",
+      "name": "IF - Noch nicht entschieden?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3100, 200],
+      "notes": "Nur auf 'Abgelaufen' setzen, wenn der Kunde nicht zwischenzeitlich schon Angenommen/Abgelehnt bekommen hat.",
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "cond-noch-offen",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "qualifiziert - Angebot gesendet",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
       "id": "supabase-expire",
       "name": "Supabase - Status Abgelaufen",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [2880, 200],
+      "position": [3320, 140],
       "notes": "Kein weiterer Kontakt zum Kunden - nur Status-Update im CRM.",
       "parameters": {
         "operation": "update",
@@ -415,7 +471,18 @@
     },
     "Wait - bis Tag 14": {
       "main": [
-        [{ "node": "Supabase - Status Abgelaufen", "type": "main", "index": 0 }]
+        [{ "node": "Supabase - Aktuellen Status abfragen", "type": "main", "index": 0 }]
+      ]
+    },
+    "Supabase - Aktuellen Status abfragen": {
+      "main": [
+        [{ "node": "IF - Noch nicht entschieden?", "type": "main", "index": 0 }]
+      ]
+    },
+    "IF - Noch nicht entschieden?": {
+      "main": [
+        [{ "node": "Supabase - Status Abgelaufen", "type": "main", "index": 0 }],
+        []
       ]
     }
   }
