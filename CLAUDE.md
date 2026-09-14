@@ -17,7 +17,9 @@ Anfrage → Qualifizierung → KI-Angebot → PDF → E-Mail → Follow-up.
 - E-Mail (required, validiert)
 - Firma (optional)
 - Projektbeschreibung (Freitext, min. 50 Zeichen, ODER alternativ PDF-Upload
-  der Projektbeschreibung, max. 10 MB — eines von beiden required)
+  der Projektbeschreibung (max. 10 MB), ODER alternativ eine Referenzseiten-URL
+  (wird automatisch zu einer managementtauglichen Beschreibung von max. 500
+  Wörtern zusammengefasst) — eines der drei required)
 - Geschätztes Budget (Dropdown: < 1.000 EUR, 1.000–5.000 EUR,
   5.000–10.000 EUR, > 10.000 EUR)
 - Gewünschter Starttermin (Datepicker)

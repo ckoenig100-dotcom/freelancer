@@ -9,6 +9,17 @@ Import from File. (Live-Instanz: bereits importiert und aktiv unter
 1. **Webhook** (`POST /webhook/anfrage`) empfängt die Formulardaten vom
    Kontaktformular und antwortet sofort (damit der 3-Tage-Wait im
    Hintergrund laufen kann, ohne den Browser-Request offen zu halten).
+1a. **Referenzseite (optional)**: Statt Text oder PDF kann eine URL
+    angegeben werden (Formularfeld `referenzseite`). Ablauf:
+    `Code - Referenzseite validieren` (SSRF-Basisschutz: nur http/https,
+    keine localhost/private IPs, kein Fetch falls PDF vorhanden) →
+    `IF - Referenzseite sicher abrufbar?` → `HTTP Request` holt die Seite
+    (Text-Format, 15s Timeout, Fehler brechen die Anfrage nicht ab) →
+    `IF - Abruf erfolgreich?` → Claude fasst den Seiteninhalt in einer
+    managementtauglichen Projektbeschreibung (max. 500 Wörter, Fließtext)
+    zusammen → `Code - Projektbeschreibung finalisieren` (universeller
+    Konvergenzpunkt für Text-/PDF-/Referenzseite-Fälle) setzt das
+    Ergebnis als `projektbeschreibung` für den Rest der Pipeline ein.
 2. **IF**: qualifiziert, wenn Budget != "< 1.000 EUR" ODER
    Projektbeschreibung > 200 Zeichen ODER ein PDF hochgeladen wurde
    (siehe CLAUDE.md Qualifizierungs-Regeln).
@@ -111,3 +122,23 @@ Social-Media-Content-Maschine-Projekt).
   (`FIRMA_NAME`, `FIRMA_KONTAKT`) hart hinterlegt — bitte anpassen.
 - **Claude-Modell**: aktuell `claude-sonnet-5`. Bei Bedarf im
   `jsonBody` der Claude-Node anpassen.
+- **SSRF-Schutz bei der Referenzseite** ist nur eine Basisabsicherung
+  (blockt offensichtliche private/interne Hostnamen). Eine URL, deren
+  Hostname erst zur Anfragezeit per DNS auf eine private IP auflöst,
+  wird davon nicht erkannt — für vollen Schutz müsste die IP nach dem
+  DNS-Lookup geprüft werden, nicht nur der Hostname-String.
+- **Achtung bei eigenen Code-Nodes:** n8ns Code-Node-Sandbox stellt die
+  globale `URL`-Klasse **nicht** bereit (`new URL(...)` wirft
+  `ReferenceError: URL is not defined`). URLs müssen per Regex geparst
+  werden (siehe `Code - Referenzseite validieren`), nicht per `new URL()`.
+  Komplexe mehrzeilige IIFE-Ausdrücke direkt in IF-Node-Bedingungen
+  (`{{ (() => {...})() }}`) haben sich zudem als unzuverlässig erwiesen
+  (lieferten inkonsistente Ergebnisse) — solche Logik gehört in einen
+  Code-Node, der Node fuellt dann nur ein einfaches Boolean-Feld, das
+  die IF-Node abfragt.
+- Alle Nodes, die auf Formulardaten zugreifen (`Code - Claude Request
+  vorbereiten`, `Code - HTML-Vorlage erstellen`), referenzieren
+  `$('Code - Projektbeschreibung finalisieren')` statt direkt den
+  Webhook-Node — dort läuft die evtl. aus PDF/Referenzseite aggregierte
+  Beschreibung zusammen. Bei weiteren Nodes, die Formulardaten brauchen,
+  denselben Node referenzieren, nicht den rohen Webhook.

@@ -22,11 +22,149 @@
       }
     },
     {
+      "id": "code-referenzseite-validieren",
+      "name": "Code - Referenzseite validieren",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 500],
+      "notes": "SSRF-Basisschutz: blockt PDF-Faelle, leere URLs, nicht-http(s)-Schemata und offensichtliche interne/private Hosts, bevor ueberhaupt ein Fetch versucht wird.",
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const body = $json.body;\nconst binary = $binary || {};\n\nlet shouldFetch = false;\nif (!(binary && binary.pdf)) {\n  const raw = (body.referenzseite || '').trim();\n  if (raw) {\n    const match = raw.match(/^(https?):\\/\\/([^\\/?#:]+)(?::\\d+)?/i);\n    if (match) {\n      const h = match[2].toLowerCase();\n      const isPrivate =\n        h === 'localhost' || h === '127.0.0.1' || h === '::1' ||\n        h.endsWith('.local') || h.endsWith('.internal') ||\n        /^10\\./.test(h) || /^192\\.168\\./.test(h) || /^169\\.254\\./.test(h) ||\n        /^172\\.(1[6-9]|2\\d|3[01])\\./.test(h);\n      shouldFetch = !isPrivate;\n    }\n  }\n}\n\nreturn { json: { body, shouldFetchReferenzseite: shouldFetch }, binary };"
+      }
+    },
+    {
+      "id": "if-referenzseite-sicher",
+      "name": "IF - Referenzseite sicher abrufbar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [340, 500],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "cond-url-safe",
+              "leftValue": "={{ $json.shouldFetchReferenzseite }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "http-referenzseite-abrufen",
+      "name": "HTTP Request - Referenzseite abrufen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 500],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.body.referenzseite.trim() }}",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "if-abruf-erfolgreich",
+      "name": "IF - Abruf erfolgreich?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 500],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "cond-fetch-ok",
+              "leftValue": "={{ $json.error === undefined && typeof $json.data === 'string' && $json.data.length > 0 }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "code-summary-request",
+      "name": "Code - Claude Zusammenfassung vorbereiten",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 500],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const html = ($input.item.json.data || '').slice(0, 60000);\nconst systemPrompt = 'Du bist ein Business-Analyst. Fasse den Inhalt der folgenden Webseite in einer managementtauglichen Projektbeschreibung zusammen: professionell, praegnant, auf Deutsch, im Fliesstext ohne Aufzaehlungen, maximal 500 Woerter. Fokus: Geschaeftsfeld, Produkt oder Dienstleistung, Zielgruppe und Fakten, die fuer ein individuelles Angebot nuetzlich sind. Gib ausschliesslich den Fliesstext der Zusammenfassung zurueck, ohne Einleitung, ohne Anfuehrungszeichen, ohne Markdown.';\n\nconst claudeRequestBody = {\n  model: 'claude-sonnet-5',\n  max_tokens: 1200,\n  system: systemPrompt,\n  messages: [{ role: 'user', content: `HTML-Inhalt der Referenzseite:\\n\\n${html}` }],\n};\n\nreturn { json: { claudeRequestBody } };"
+      }
+    },
+    {
+      "id": "http-claude-summary",
+      "name": "Claude API - Referenzseite zusammenfassen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 500],
+      "notes": "Benoetigt Credential 'Anthropic API Key' (Header Auth, Header-Name: x-api-key).",
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.claudeRequestBody) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": { "name": "Anthropic API Key" }
+      }
+    },
+    {
+      "id": "code-summary-parse",
+      "name": "Code - Zusammenfassung uebernehmen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 500],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const content = $input.item.json.content || [];\nconst textBlock = content.find((b) => b.type === 'text');\nlet summary = textBlock ? textBlock.text.trim() : '';\n\nconst words = summary.split(/\\s+/).filter(Boolean);\nif (words.length > 520) {\n  summary = words.slice(0, 500).join(' ') + '\\u2026';\n}\n\nreturn { json: { aggregierteBeschreibung: summary || '[Referenzseite konnte nicht zusammengefasst werden]' } };"
+      }
+    },
+    {
+      "id": "code-beschreibung-final",
+      "name": "Code - Projektbeschreibung finalisieren",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 400],
+      "notes": "Universeller Konvergenzpunkt: laeuft fuer JEDE Anfrage (Text, PDF oder Referenzseite). Nutzt die per Referenzseite aggregierte Beschreibung, falls vorhanden, sonst die Original-Formulardaten.",
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const originalBody = $('Webhook - Anfrage empfangen').item.json.body;\nconst binary = $('Webhook - Anfrage empfangen').item.binary || {};\n\nlet projektbeschreibung = originalBody.projektbeschreibung || '';\nif ($json.aggregierteBeschreibung) {\n  projektbeschreibung = $json.aggregierteBeschreibung;\n}\n\nreturn {\n  json: {\n    body: { ...originalBody, projektbeschreibung },\n  },\n  binary,\n};"
+      }
+    },
+    {
       "id": "if-qualifiziert",
       "name": "IF - Qualifiziert?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [460, 300],
+      "position": [1780, 300],
       "parameters": {
         "conditions": {
           "options": {
@@ -77,7 +215,7 @@
       "notes": "Liest ein hochgeladenes PDF (Feld 'pdf') als Base64 und baut daraus einen Claude-Document-Content-Block; sonst wird die Projektbeschreibung als Text mitgeschickt.",
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const data = $('Webhook - Anfrage empfangen').item.json.body;\nconst binary = $('Webhook - Anfrage empfangen').item.binary || {};\nconst hasPdf = Boolean(binary.pdf);\n\nconst systemPrompt = 'Du bist ein professioneller Angebotsschreiber für eine Webentwicklungs-Agentur. Erstelle aus der Anfrage ein konkretes Angebot mit 3-5 Leistungspunkten, realistischem Zeitplan und Preisvorschlag. Ton: professionell, konkret, keine leeren Versprechungen. Preis: Im Rahmen des angegebenen Budgets, aber nicht am oberen Rand. Falls eine Projektbeschreibung als PDF-Dokument mitgeschickt wurde, nutze dessen Inhalt als Grundlage. Gib deine Antwort ausschließlich als valides JSON-Objekt zurück (kein Markdown, kein Fließtext drumherum) mit genau diesen Feldern: summary (2-3 Sätze Zusammenfassung der Anfrage), leistungen (Array aus 3-5 kurzen Leistungspunkten), zeitplan (Text mit dem realistischen Zeitplan), preisspanne (Text mit dem Preisvorschlag).';\n\nconst meta = {\n  name: data.name,\n  email: data.email,\n  firma: data.firma || null,\n  budget: data.budget,\n  starttermin: data.starttermin || null,\n  quelle: data.quelle || null,\n};\n\nlet userContent;\nif (hasPdf) {\n  const buffer = await this.helpers.getBinaryDataBuffer(0, 'pdf');\n  const pdfBase64 = buffer.toString('base64');\n  userContent = [\n    { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } },\n    { type: 'text', text: 'Kundendaten (Projektbeschreibung siehe angehaengtes PDF):\\n' + JSON.stringify(meta) },\n  ];\n} else {\n  userContent = JSON.stringify({ ...meta, projektbeschreibung: data.projektbeschreibung });\n}\n\nconst claudeRequestBody = {\n  model: 'claude-sonnet-5',\n  max_tokens: 2000,\n  system: systemPrompt,\n  messages: [{ role: 'user', content: userContent }],\n};\n\nreturn { json: { claudeRequestBody, hasPdf } };"
+        "jsCode": "const data = $('Code - Projektbeschreibung finalisieren').item.json.body;\nconst binary = $('Code - Projektbeschreibung finalisieren').item.binary || {};\nconst hasPdf = Boolean(binary.pdf);\n\nconst systemPrompt = 'Du bist ein professioneller Angebotsschreiber für eine Webentwicklungs-Agentur. Erstelle aus der Anfrage ein konkretes Angebot mit 3-5 Leistungspunkten, realistischem Zeitplan und Preisvorschlag. Ton: professionell, konkret, keine leeren Versprechungen. Preis: Im Rahmen des angegebenen Budgets, aber nicht am oberen Rand. Falls eine Projektbeschreibung als PDF-Dokument mitgeschickt wurde, nutze dessen Inhalt als Grundlage. Gib deine Antwort ausschließlich als valides JSON-Objekt zurück (kein Markdown, kein Fließtext drumherum) mit genau diesen Feldern: summary (2-3 Sätze Zusammenfassung der Anfrage), leistungen (Array aus 3-5 kurzen Leistungspunkten), zeitplan (Text mit dem realistischen Zeitplan), preisspanne (Text mit dem Preisvorschlag).';\n\nconst meta = {\n  name: data.name,\n  email: data.email,\n  firma: data.firma || null,\n  budget: data.budget,\n  starttermin: data.starttermin || null,\n  quelle: data.quelle || null,\n};\n\nlet userContent;\nif (hasPdf) {\n  const buffer = await this.helpers.getBinaryDataBuffer(0, 'pdf');\n  const pdfBase64 = buffer.toString('base64');\n  userContent = [\n    { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } },\n    { type: 'text', text: 'Kundendaten (Projektbeschreibung siehe angehaengtes PDF):\\n' + JSON.stringify(meta) },\n  ];\n} else {\n  userContent = JSON.stringify({ ...meta, projektbeschreibung: data.projektbeschreibung });\n}\n\nconst claudeRequestBody = {\n  model: 'claude-sonnet-5',\n  max_tokens: 2000,\n  system: systemPrompt,\n  messages: [{ role: 'user', content: userContent }],\n};\n\nreturn { json: { claudeRequestBody, hasPdf } };"
       }
     },
     {
@@ -116,7 +254,7 @@
       "position": [900, 200],
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const data = $('Webhook - Anfrage empfangen').item.json.body;\nconst claudeContent = $input.item.json.content || [];\nconst claudeTextBlock = claudeContent.find((block) => block.type === 'text');\nconst claudeRaw = claudeTextBlock ? claudeTextBlock.text : '';\nlet ai;\nlet jsonText = claudeRaw.trim();\nconst fenceMatch = jsonText.match(/^```(?:json)?\\s*([\\s\\S]*?)\\s*```$/);\nif (fenceMatch) {\n  jsonText = fenceMatch[1];\n}\n// Claude gibt gelegentlich echte Zeilenumbrueche innerhalb von String-Werten zurueck,\n// was gegen die JSON-Spec verstoesst (Steuerzeichen muessten als \\n escaped sein).\n// Da JSON ausserhalb von Strings Whitespace ignoriert, ist ein Ersetzen durch Leerzeichen sicher.\njsonText = jsonText.replace(/[\\r\\n]+/g, ' ');\ntry {\n  ai = JSON.parse(jsonText);\n} catch (e) {\n  ai = { summary: claudeRaw, leistungen: [], zeitplan: '', preisspanne: '' };\n}\n\nconst now = new Date();\nconst datum = now.toLocaleDateString('de-DE');\nconst angebotsnummer = `AN-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;\n\nconst FIRMA_NAME = 'Deine Firma GmbH';\nconst FIRMA_KONTAKT = 'kontakt@deine-firma.de - +49 30 1234567';\n\nconst leistungenHtml = (ai.leistungen || []).map((punkt) => `<li>${punkt}</li>`).join('');\n\nconst html = `<!DOCTYPE html>\n<html lang='de'>\n<head><meta charset='utf-8'><title>Angebot ${angebotsnummer}</title></head>\n<body style='font-family: Arial, sans-serif; color: #1e293b; max-width: 700px; margin: 0 auto;'>\n  <header style='border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 24px;'>\n    <h1 style='margin: 0;'>${FIRMA_NAME}</h1>\n    <p style='margin: 4px 0 0; color: #64748b;'>${FIRMA_KONTAKT}</p>\n  </header>\n  <p><strong>Datum:</strong> ${datum} &nbsp;|&nbsp; <strong>Angebotsnummer:</strong> ${angebotsnummer}</p>\n  <p>Sehr geehrte/r ${data.name},</p>\n  <p>${ai.summary || ''}</p>\n  <h3>Leistungsbeschreibung</h3>\n  <ul>${leistungenHtml}</ul>\n  <h3>Zeitplan</h3>\n  <p>${ai.zeitplan || ''}</p>\n  <h3>Preis</h3>\n  <p>${ai.preisspanne || ''}</p>\n  <h3>Zahlungsbedingungen</h3>\n  <p>50% Anzahlung, 50% bei Abnahme.</p>\n  <p><strong>Gueltigkeitsdauer:</strong> Dieses Angebot ist 14 Tage gueltig.</p>\n  <footer style='margin-top: 32px; border-top: 1px solid #e2e8f0; padding-top: 16px; color: #64748b; font-size: 0.85em;'>\n    <p>${FIRMA_NAME} - ${FIRMA_KONTAKT}</p>\n  </footer>\n</body>\n</html>`;\n\nconst indexHtmlBinary = await this.helpers.prepareBinaryData(Buffer.from(html, 'utf-8'), 'index.html', 'text/html');\n\nreturn {\n  json: {\n    name: data.name,\n    email: data.email,\n    firma: data.firma || '',\n    budget: data.budget,\n    projektbeschreibung: data.projektbeschreibung || '[Projektbeschreibung als PDF hochgeladen]',\n    starttermin: data.starttermin || '',\n    quelle: data.quelle || '',\n    angebotsnummer,\n    datum,\n    summary: ai.summary || '',\n    leistungen: (ai.leistungen || []).join('\\n'),\n    zeitplan: ai.zeitplan || '',\n    preisspanne: ai.preisspanne || '',\n    html,\n  },\n  binary: {\n    index_html: indexHtmlBinary,\n  },\n};"
+        "jsCode": "const data = $('Code - Projektbeschreibung finalisieren').item.json.body;\nconst claudeContent = $input.item.json.content || [];\nconst claudeTextBlock = claudeContent.find((block) => block.type === 'text');\nconst claudeRaw = claudeTextBlock ? claudeTextBlock.text : '';\nlet ai;\nlet jsonText = claudeRaw.trim();\nconst fenceMatch = jsonText.match(/^```(?:json)?\\s*([\\s\\S]*?)\\s*```$/);\nif (fenceMatch) {\n  jsonText = fenceMatch[1];\n}\n// Claude gibt gelegentlich echte Zeilenumbrueche innerhalb von String-Werten zurueck,\n// was gegen die JSON-Spec verstoesst (Steuerzeichen muessten als \\n escaped sein).\n// Da JSON ausserhalb von Strings Whitespace ignoriert, ist ein Ersetzen durch Leerzeichen sicher.\njsonText = jsonText.replace(/[\\r\\n]+/g, ' ');\ntry {\n  ai = JSON.parse(jsonText);\n} catch (e) {\n  ai = { summary: claudeRaw, leistungen: [], zeitplan: '', preisspanne: '' };\n}\n\nconst now = new Date();\nconst datum = now.toLocaleDateString('de-DE');\nconst angebotsnummer = `AN-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;\n\nconst FIRMA_NAME = 'Deine Firma GmbH';\nconst FIRMA_KONTAKT = 'kontakt@deine-firma.de - +49 30 1234567';\n\nconst leistungenHtml = (ai.leistungen || []).map((punkt) => `<li>${punkt}</li>`).join('');\n\nconst html = `<!DOCTYPE html>\n<html lang='de'>\n<head><meta charset='utf-8'><title>Angebot ${angebotsnummer}</title></head>\n<body style='font-family: Arial, sans-serif; color: #1e293b; max-width: 700px; margin: 0 auto;'>\n  <header style='border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 24px;'>\n    <h1 style='margin: 0;'>${FIRMA_NAME}</h1>\n    <p style='margin: 4px 0 0; color: #64748b;'>${FIRMA_KONTAKT}</p>\n  </header>\n  <p><strong>Datum:</strong> ${datum} &nbsp;|&nbsp; <strong>Angebotsnummer:</strong> ${angebotsnummer}</p>\n  <p>Sehr geehrte/r ${data.name},</p>\n  <p>${ai.summary || ''}</p>\n  <h3>Leistungsbeschreibung</h3>\n  <ul>${leistungenHtml}</ul>\n  <h3>Zeitplan</h3>\n  <p>${ai.zeitplan || ''}</p>\n  <h3>Preis</h3>\n  <p>${ai.preisspanne || ''}</p>\n  <h3>Zahlungsbedingungen</h3>\n  <p>50% Anzahlung, 50% bei Abnahme.</p>\n  <p><strong>Gueltigkeitsdauer:</strong> Dieses Angebot ist 14 Tage gueltig.</p>\n  <footer style='margin-top: 32px; border-top: 1px solid #e2e8f0; padding-top: 16px; color: #64748b; font-size: 0.85em;'>\n    <p>${FIRMA_NAME} - ${FIRMA_KONTAKT}</p>\n  </footer>\n</body>\n</html>`;\n\nconst indexHtmlBinary = await this.helpers.prepareBinaryData(Buffer.from(html, 'utf-8'), 'index.html', 'text/html');\n\nreturn {\n  json: {\n    name: data.name,\n    email: data.email,\n    firma: data.firma || '',\n    budget: data.budget,\n    projektbeschreibung: data.projektbeschreibung || '[Projektbeschreibung als PDF hochgeladen]',\n    starttermin: data.starttermin || '',\n    quelle: data.quelle || '',\n    angebotsnummer,\n    datum,\n    summary: ai.summary || '',\n    leistungen: (ai.leistungen || []).join('\\n'),\n    zeitplan: ai.zeitplan || '',\n    preisspanne: ai.preisspanne || '',\n    html,\n  },\n  binary: {\n    index_html: indexHtmlBinary,\n  },\n};"
       }
     },
     {
@@ -404,6 +542,48 @@
   ],
   "connections": {
     "Webhook - Anfrage empfangen": {
+      "main": [
+        [{ "node": "Code - Referenzseite validieren", "type": "main", "index": 0 }]
+      ]
+    },
+    "Code - Referenzseite validieren": {
+      "main": [
+        [{ "node": "IF - Referenzseite sicher abrufbar?", "type": "main", "index": 0 }]
+      ]
+    },
+    "IF - Referenzseite sicher abrufbar?": {
+      "main": [
+        [{ "node": "HTTP Request - Referenzseite abrufen", "type": "main", "index": 0 }],
+        [{ "node": "Code - Projektbeschreibung finalisieren", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP Request - Referenzseite abrufen": {
+      "main": [
+        [{ "node": "IF - Abruf erfolgreich?", "type": "main", "index": 0 }]
+      ]
+    },
+    "IF - Abruf erfolgreich?": {
+      "main": [
+        [{ "node": "Code - Claude Zusammenfassung vorbereiten", "type": "main", "index": 0 }],
+        [{ "node": "Code - Projektbeschreibung finalisieren", "type": "main", "index": 0 }]
+      ]
+    },
+    "Code - Claude Zusammenfassung vorbereiten": {
+      "main": [
+        [{ "node": "Claude API - Referenzseite zusammenfassen", "type": "main", "index": 0 }]
+      ]
+    },
+    "Claude API - Referenzseite zusammenfassen": {
+      "main": [
+        [{ "node": "Code - Zusammenfassung uebernehmen", "type": "main", "index": 0 }]
+      ]
+    },
+    "Code - Zusammenfassung uebernehmen": {
+      "main": [
+        [{ "node": "Code - Projektbeschreibung finalisieren", "type": "main", "index": 0 }]
+      ]
+    },
+    "Code - Projektbeschreibung finalisieren": {
       "main": [
         [{ "node": "IF - Qualifiziert?", "type": "main", "index": 0 }]
       ]
