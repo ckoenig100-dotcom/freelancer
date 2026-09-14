@@ -9,7 +9,7 @@ Anfrage → Qualifizierung → KI-Angebot → PDF → E-Mail → Follow-up.
 - n8n (komplette Automatisierung)
 - Claude API (Angebotstext generieren)
 - Puppeteer/pdf-lib (PDF-Erstellung in n8n)
-- Baserow (CRM, self-hosted)
+- Supabase/Postgres (CRM)
 - SMTP (E-Mail-Versand)
 
 ## Formular-Felder
