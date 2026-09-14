@@ -1,0 +1,116 @@
+---
+const testimonials = [
+  {
+    quote:
+      'Von der Anfrage bis zum unterschriftsreifen Angebot hat es keine 24 Stunden gedauert. Kommunikation war jederzeit klar und professionell.',
+    name: 'Julia M.',
+    role: 'Gründerin, E-Commerce',
+  },
+  {
+    quote:
+      'Endlich ein Angebot, das genau auf unser Projekt zugeschnitten war – ohne stundenlanges Hin und Her im Erstgespräch.',
+    name: 'Thomas B.',
+    role: 'Marketingleiter, Mittelstand',
+  },
+  {
+    quote:
+      'Schnelle Rückmeldung, faire Preisgestaltung und ein Angebot, das direkt umsetzbar war. Genau das, was wir gesucht haben.',
+    name: 'Sabine K.',
+    role: 'Projektleiterin, Agentur',
+  },
+];
+---
+
+<aside class="flex flex-col gap-8">
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div class="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-4">
+      <span class="text-2xl" aria-hidden="true">⏱️</span>
+      <div>
+        <p class="text-sm font-semibold text-emerald-900">Antwortzeit unter 24h</p>
+        <p class="text-xs text-emerald-700">Garantiert schnelle Rückmeldung</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-4">
+      <span class="text-2xl" aria-hidden="true">🤝</span>
+      <div>
+        <p class="text-sm font-semibold text-emerald-900">120+ zufriedene Kunden</p>
+        <p class="text-xs text-emerald-700">Erfolgreich abgeschlossene Projekte</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="testimonial-slider" class="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div class="relative min-h-[10rem]">
+      {testimonials.map((t, i) => (
+        <blockquote
+          class="testimonial-slide absolute inset-0 transition-opacity duration-500"
+          class:list={[i === 0 ? 'opacity-100' : 'opacity-0 pointer-events-none']}
+          data-index={i}
+        >
+          <p class="text-sm leading-relaxed text-slate-700">&ldquo;{t.quote}&rdquo;</p>
+          <footer class="mt-4 flex items-center gap-3">
+            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white">
+              {t.name.split(' ').map((n) => n[0]).join('')}
+            </span>
+            <div>
+              <p class="text-sm font-semibold text-slate-900">{t.name}</p>
+              <p class="text-xs text-slate-500">{t.role}</p>
+            </div>
+          </footer>
+        </blockquote>
+      ))}
+    </div>
+    <div class="mt-4 flex justify-center gap-2">
+      {testimonials.map((_, i) => (
+        <button
+          type="button"
+          class="testimonial-dot h-2 w-2 rounded-full bg-slate-300 transition"
+          class:list={[i === 0 && 'bg-slate-900']}
+          data-index={i}
+          aria-label={`Testimonial ${i + 1} anzeigen`}
+        ></button>
+      ))}
+    </div>
+  </div>
+</aside>
+
+<script>
+  const slider = document.getElementById('testimonial-slider');
+  if (slider) {
+    const slides = Array.from(slider.querySelectorAll<HTMLElement>('.testimonial-slide'));
+    const dots = Array.from(slider.querySelectorAll<HTMLButtonElement>('.testimonial-dot'));
+    let current = 0;
+    let timer: ReturnType<typeof setInterval>;
+
+    function show(index: number) {
+      slides.forEach((slide, i) => {
+        slide.classList.toggle('opacity-100', i === index);
+        slide.classList.toggle('opacity-0', i !== index);
+        slide.classList.toggle('pointer-events-none', i !== index);
+      });
+      dots.forEach((dot, i) => {
+        dot.classList.toggle('bg-slate-900', i === index);
+        dot.classList.toggle('bg-slate-300', i !== index);
+      });
+      current = index;
+    }
+
+    function next() {
+      show((current + 1) % slides.length);
+    }
+
+    function restartTimer() {
+      clearInterval(timer);
+      timer = setInterval(next, 6000);
+    }
+
+    dots.forEach((dot) => {
+      dot.addEventListener('click', () => {
+        show(Number(dot.dataset.index));
+        restartTimer();
+      });
+    });
+
+    restartTimer();
+  }
+</script>

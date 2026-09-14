@@ -1,0 +1,257 @@
+---
+const budgetOptions = [
+  { value: '<1000', label: '< 1.000 EUR' },
+  { value: '1000-5000', label: '1.000–5.000 EUR' },
+  { value: '5000-10000', label: '5.000–10.000 EUR' },
+  { value: '>10000', label: '> 10.000 EUR' },
+];
+
+const sourceOptions = [
+  { value: 'google', label: 'Google-Suche' },
+  { value: 'empfehlung', label: 'Empfehlung' },
+  { value: 'social-media', label: 'Social Media' },
+  { value: 'xing-linkedin', label: 'XING / LinkedIn' },
+  { value: 'sonstiges', label: 'Sonstiges' },
+];
+---
+
+<form id="kontakt-form" class="space-y-5" novalidate>
+  <div>
+    <label for="name" class="mb-1 block text-sm font-medium text-slate-700">
+      Name <span class="text-rose-600">*</span>
+    </label>
+    <input
+      type="text"
+      id="name"
+      name="name"
+      required
+      autocomplete="name"
+      class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+    />
+    <p class="field-error mt-1 hidden text-sm text-rose-600" role="alert"></p>
+  </div>
+
+  <div>
+    <label for="email" class="mb-1 block text-sm font-medium text-slate-700">
+      E-Mail <span class="text-rose-600">*</span>
+    </label>
+    <input
+      type="email"
+      id="email"
+      name="email"
+      required
+      autocomplete="email"
+      class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+    />
+    <p class="field-error mt-1 hidden text-sm text-rose-600" role="alert"></p>
+  </div>
+
+  <div>
+    <label for="firma" class="mb-1 block text-sm font-medium text-slate-700">Firma</label>
+    <input
+      type="text"
+      id="firma"
+      name="firma"
+      autocomplete="organization"
+      class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+    />
+  </div>
+
+  <div>
+    <label for="projektbeschreibung" class="mb-1 block text-sm font-medium text-slate-700">
+      Projektbeschreibung <span class="text-rose-600">*</span>
+    </label>
+    <textarea
+      id="projektbeschreibung"
+      name="projektbeschreibung"
+      rows="5"
+      required
+      minlength="50"
+      class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+    ></textarea>
+    <div class="mt-1 flex items-center justify-between">
+      <p class="field-error hidden text-sm text-rose-600" role="alert"></p>
+      <p id="char-count" class="ml-auto text-xs text-slate-400">0 / 50 Zeichen</p>
+    </div>
+  </div>
+
+  <div>
+    <label for="budget" class="mb-1 block text-sm font-medium text-slate-700">
+      Geschätztes Budget <span class="text-rose-600">*</span>
+    </label>
+    <select
+      id="budget"
+      name="budget"
+      required
+      class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+    >
+      <option value="" disabled selected>Bitte wählen</option>
+      {budgetOptions.map((opt) => <option value={opt.value}>{opt.label}</option>)}
+    </select>
+    <p class="field-error mt-1 hidden text-sm text-rose-600" role="alert"></p>
+  </div>
+
+  <div>
+    <label for="starttermin" class="mb-1 block text-sm font-medium text-slate-700">Gewünschter Starttermin</label>
+    <input
+      type="date"
+      id="starttermin"
+      name="starttermin"
+      class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+    />
+  </div>
+
+  <div>
+    <label for="quelle" class="mb-1 block text-sm font-medium text-slate-700">Wie bist du auf uns aufmerksam geworden?</label>
+    <select
+      id="quelle"
+      name="quelle"
+      class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+    >
+      <option value="" selected>Bitte wählen</option>
+      {sourceOptions.map((opt) => <option value={opt.value}>{opt.label}</option>)}
+    </select>
+  </div>
+
+  <p id="form-error" class="hidden rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert"></p>
+
+  <button
+    type="submit"
+    id="submit-button"
+    class="w-full rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 disabled:cursor-not-allowed disabled:opacity-60"
+  >
+    Unverbindliches Angebot anfordern
+  </button>
+</form>
+
+<script>
+  const webhookUrl = import.meta.env.PUBLIC_N8N_WEBHOOK_URL as string | undefined;
+
+  const form = document.getElementById('kontakt-form') as HTMLFormElement;
+  const submitButton = document.getElementById('submit-button') as HTMLButtonElement;
+  const formError = document.getElementById('form-error') as HTMLParagraphElement;
+  const description = document.getElementById('projektbeschreibung') as HTMLTextAreaElement;
+  const charCount = document.getElementById('char-count') as HTMLParagraphElement;
+
+  const MIN_DESCRIPTION_LENGTH = 50;
+
+  function updateCharCount() {
+    const length = description.value.trim().length;
+    charCount.textContent = `${length} / ${MIN_DESCRIPTION_LENGTH} Zeichen`;
+    charCount.classList.toggle('text-emerald-600', length >= MIN_DESCRIPTION_LENGTH);
+    charCount.classList.toggle('text-slate-400', length < MIN_DESCRIPTION_LENGTH);
+  }
+  description.addEventListener('input', updateCharCount);
+  updateCharCount();
+
+  function setFieldError(field: HTMLElement, message: string) {
+    const errorEl = field.parentElement?.querySelector('.field-error') as HTMLElement | null;
+    if (!errorEl) return;
+    if (message) {
+      errorEl.textContent = message;
+      errorEl.classList.remove('hidden');
+      field.classList.add('border-rose-500');
+      field.setAttribute('aria-invalid', 'true');
+    } else {
+      errorEl.textContent = '';
+      errorEl.classList.add('hidden');
+      field.classList.remove('border-rose-500');
+      field.removeAttribute('aria-invalid');
+    }
+  }
+
+  function isValidEmail(value: string) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  }
+
+  function validateForm(): boolean {
+    let valid = true;
+    const data = new FormData(form);
+
+    const name = String(data.get('name') || '').trim();
+    const nameField = document.getElementById('name') as HTMLElement;
+    if (!name) {
+      setFieldError(nameField, 'Bitte gib deinen Namen an.');
+      valid = false;
+    } else {
+      setFieldError(nameField, '');
+    }
+
+    const email = String(data.get('email') || '').trim();
+    const emailField = document.getElementById('email') as HTMLElement;
+    if (!email) {
+      setFieldError(emailField, 'Bitte gib deine E-Mail-Adresse an.');
+      valid = false;
+    } else if (!isValidEmail(email)) {
+      setFieldError(emailField, 'Bitte gib eine gültige E-Mail-Adresse an.');
+      valid = false;
+    } else {
+      setFieldError(emailField, '');
+    }
+
+    const projektbeschreibung = String(data.get('projektbeschreibung') || '').trim();
+    if (!projektbeschreibung) {
+      setFieldError(description, 'Bitte beschreibe dein Projekt.');
+      valid = false;
+    } else if (projektbeschreibung.length < MIN_DESCRIPTION_LENGTH) {
+      setFieldError(description, `Bitte beschreibe dein Projekt etwas ausführlicher (mind. ${MIN_DESCRIPTION_LENGTH} Zeichen).`);
+      valid = false;
+    } else {
+      setFieldError(description, '');
+    }
+
+    const budget = String(data.get('budget') || '').trim();
+    const budgetField = document.getElementById('budget') as HTMLElement;
+    if (!budget) {
+      setFieldError(budgetField, 'Bitte wähle dein geschätztes Budget.');
+      valid = false;
+    } else {
+      setFieldError(budgetField, '');
+    }
+
+    return valid;
+  }
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    formError.classList.add('hidden');
+
+    if (!validateForm()) {
+      form.querySelector('[aria-invalid="true"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    if (!webhookUrl) {
+      formError.textContent = 'Das Formular ist aktuell nicht konfiguriert. Bitte kontaktiere uns direkt per E-Mail.';
+      formError.classList.remove('hidden');
+      console.error('PUBLIC_N8N_WEBHOOK_URL ist nicht gesetzt.');
+      return;
+    }
+
+    const data = new FormData(form);
+    const payload = Object.fromEntries(data.entries());
+
+    submitButton.disabled = true;
+    submitButton.textContent = 'Wird gesendet …';
+
+    try {
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Webhook antwortete mit Status ${response.status}`);
+      }
+
+      window.location.href = '/danke';
+    } catch (error) {
+      console.error('Fehler beim Senden des Formulars:', error);
+      formError.textContent = 'Beim Senden ist ein Fehler aufgetreten. Bitte versuche es erneut.';
+      formError.classList.remove('hidden');
+      submitButton.disabled = false;
+      submitButton.textContent = 'Unverbindliches Angebot anfordern';
+    }
+  });
+</script>

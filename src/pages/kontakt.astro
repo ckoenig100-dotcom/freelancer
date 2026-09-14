@@ -1,0 +1,27 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ContactForm from '../components/ContactForm.astro';
+import TestimonialsPanel from '../components/TestimonialsPanel.astro';
+---
+
+<Layout title="Kontakt & Angebot anfordern | AngebotsPipeline">
+  <main class="mx-auto max-w-6xl px-6 py-12 sm:py-16">
+    <div class="mb-10 text-center sm:mb-14">
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+        Erzähl uns von deinem Projekt
+      </h1>
+      <p class="mx-auto mt-3 max-w-2xl text-slate-600">
+        Fülle das Formular aus und erhalte innerhalb von 24 Stunden ein individuelles,
+        unverbindliches Angebot per E-Mail.
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 gap-10 lg:grid-cols-2">
+      <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+        <ContactForm />
+      </section>
+
+      <TestimonialsPanel />
+    </div>
+  </main>
+</Layout>
