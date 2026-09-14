@@ -210,6 +210,74 @@
       }
     },
     {
+      "id": "wait-tag10",
+      "name": "Wait - bis Tag 10",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [2220, 200],
+      "notes": "7 weitere Tage nach dem Tag-3-Follow-up = Tag 10 seit Angebotserstellung.",
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": 7,
+        "unit": "days"
+      }
+    },
+    {
+      "id": "smtp-followup-tag10",
+      "name": "SMTP - Follow-up Tag 10",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [2440, 200],
+      "parameters": {
+        "fromEmail": "={{$env.SMTP_FROM_EMAIL}}",
+        "toEmail": "={{$('Code - HTML-Vorlage erstellen').item.json.email}}",
+        "subject": "Dein Angebot laeuft in 4 Tagen ab",
+        "text": "=Hallo {{ $('Code - HTML-Vorlage erstellen').item.json.name }},\n\nnur eine kurze Erinnerung: Dein Angebot (Nr. {{ $('Code - HTML-Vorlage erstellen').item.json.angebotsnummer }}) laeuft in 4 Tagen ab. Falls du starten moechtest oder noch Fragen hast, melde dich gerne bei uns.\n\nViele Gruesse"
+      },
+      "credentials": {
+        "smtp": { "name": "SMTP Account" }
+      }
+    },
+    {
+      "id": "wait-tag14",
+      "name": "Wait - bis Tag 14",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [2660, 200],
+      "notes": "4 weitere Tage nach dem Tag-10-Follow-up = Tag 14 seit Angebotserstellung.",
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": 4,
+        "unit": "days"
+      }
+    },
+    {
+      "id": "supabase-expire",
+      "name": "Supabase - Status Abgelaufen",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [2880, 200],
+      "notes": "Kein weiterer Kontakt zum Kunden - nur Status-Update im CRM.",
+      "parameters": {
+        "operation": "update",
+        "schema": { "__rl": true, "mode": "list", "value": "public" },
+        "table": { "__rl": true, "mode": "list", "value": "angebot_anfragen" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Supabase - CRM speichern').item.json.id }}",
+            "status": "Abgelaufen"
+          },
+          "matchingColumns": ["id"],
+          "schema": []
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": { "name": "Supabase Postgres (freelancer)" }
+      }
+    },
+    {
       "id": "smtp-absage",
       "name": "SMTP - Absage senden",
       "type": "n8n-nodes-base.emailSend",
@@ -267,6 +335,26 @@
     "Wait - 3 Tage": {
       "main": [
         [{ "node": "SMTP - Follow-up Tag 3", "type": "main", "index": 0 }]
+      ]
+    },
+    "SMTP - Follow-up Tag 3": {
+      "main": [
+        [{ "node": "Wait - bis Tag 10", "type": "main", "index": 0 }]
+      ]
+    },
+    "Wait - bis Tag 10": {
+      "main": [
+        [{ "node": "SMTP - Follow-up Tag 10", "type": "main", "index": 0 }]
+      ]
+    },
+    "SMTP - Follow-up Tag 10": {
+      "main": [
+        [{ "node": "Wait - bis Tag 14", "type": "main", "index": 0 }]
+      ]
+    },
+    "Wait - bis Tag 14": {
+      "main": [
+        [{ "node": "Supabase - Status Abgelaufen", "type": "main", "index": 0 }]
       ]
     }
   }

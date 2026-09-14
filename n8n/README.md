@@ -18,10 +18,11 @@ Import from File. (Live-Instanz: bereits importiert und aktiv unter
 5. **HTTP Request**: schickt das HTML als Datei `index.html`
    (multipart/form-data, Feld `files`) an Gotenberg und erhält die
    PDF-Binärdatei zurück.
-6. **SMTP**: verschickt das Angebot mit PDF-Anhang.
+6. **SMTP**: verschickt das Angebot mit PDF-Anhang direkt an den Kunden.
 7. **Supabase (Postgres)**: speichert Anfrage + Status im CRM.
-8. **Wait**: 3 Tage.
-9. **SMTP**: Follow-up-Mail ("Kurze Nachfrage").
+8. **Wait**: 3 Tage → **SMTP**: Follow-up-Mail ("Kurze Nachfrage — gibt es offene Fragen?").
+9. **Wait**: 7 weitere Tage (Tag 10) → **SMTP**: Follow-up-Mail ("Dein Angebot läuft in 4 Tagen ab").
+10. **Wait**: 4 weitere Tage (Tag 14) → **Supabase**: Status auf `Abgelaufen` setzen (kein weiterer Kontakt).
 
 ## Vorbedingung: Supabase-Tabelle anlegen
 
@@ -49,8 +50,8 @@ create table public.angebot_anfragen (
 | Credential | Typ | Verwendung |
 | --- | --- | --- |
 | Anthropic API Key | Header Auth (`x-api-key: <dein Claude API Key>`) | Claude-API-Node |
-| SMTP Account | SMTP | alle drei E-Mail-Nodes |
-| Supabase Postgres | Postgres | CRM-Node (Insert in `public.angebot_anfragen`) |
+| SMTP Account | SMTP | alle vier E-Mail-Nodes |
+| Supabase Postgres | Postgres | CRM-Nodes (Insert + Update in `public.angebot_anfragen`) |
 
 Auf der Live-Instanz sind Anthropic-, SMTP- und Supabase-Credential
 bereits vorhanden und im Workflow verknüpft (wiederverwendet aus dem
@@ -72,5 +73,5 @@ Social-Media-Content-Maschine-Projekt).
   Datenbank-Lookup des letzten Standes eingebaut werden.
 - **Firmenname/Kontaktdaten** im PDF-Header sind im Code-Node
   (`FIRMA_NAME`, `FIRMA_KONTAKT`) hart hinterlegt — bitte anpassen.
-- **Claude-Modell**: aktuell `claude-sonnet-4-20250514`. Bei Bedarf im
+- **Claude-Modell**: aktuell `claude-sonnet-5`. Bei Bedarf im
   `jsonBody` der Claude-Node anpassen.
