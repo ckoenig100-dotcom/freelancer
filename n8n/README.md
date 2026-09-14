@@ -18,8 +18,13 @@ Import from File. (Live-Instanz: bereits importiert und aktiv unter
 5. **HTTP Request**: schickt das HTML als Datei `index.html`
    (multipart/form-data, Feld `files`) an Gotenberg und erhält die
    PDF-Binärdatei zurück.
-6. **SMTP**: verschickt das Angebot mit PDF-Anhang direkt an den Kunden.
-7. **Supabase (Postgres)**: speichert Anfrage + Status im CRM.
+6. **SMTP**: verschickt das Angebot mit PDF-Anhang direkt an den Kunden
+   (BCC an `chris@agentic-code.at`, damit jedes rausgegangene Angebot
+   mitgelesen wird).
+7. **Supabase (Postgres)**: speichert Anfrage + Status **und den
+   generierten Angebotsinhalt** (Zusammenfassung, Leistungen, Zeitplan,
+   Preisspanne) im CRM — damit nachvollziehbar bleibt, woran man sich
+   die 14 Tage Gültigkeit gebunden hat.
 8. **Wait**: 3 Tage → **SMTP**: Follow-up-Mail ("Kurze Nachfrage — gibt es offene Fragen?").
 9. **Wait**: 7 weitere Tage (Tag 10) → **SMTP**: Follow-up-Mail ("Dein Angebot läuft in 4 Tagen ab").
 10. **Wait**: 4 weitere Tage (Tag 14) → **Supabase**: Status auf `Abgelaufen` setzen (kein weiterer Kontakt).
@@ -41,8 +46,22 @@ create table public.angebot_anfragen (
   status text not null default 'neu',
   angebotsnummer text,
   datum text,
+  angebot_summary text,
+  angebot_leistungen text,
+  angebot_zeitplan text,
+  angebot_preisspanne text,
   created_at timestamptz not null default now()
 );
+```
+
+Falls die Tabelle schon ohne die `angebot_*`-Spalten existiert, stattdessen:
+
+```sql
+alter table public.angebot_anfragen
+  add column angebot_summary text,
+  add column angebot_leistungen text,
+  add column angebot_zeitplan text,
+  add column angebot_preisspanne text;
 ```
 
 ## Benötigte Credentials (in n8n anlegen)
