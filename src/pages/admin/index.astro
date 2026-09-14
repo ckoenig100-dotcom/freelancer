@@ -17,8 +17,18 @@ const filtered =
   statusFilter === 'alle' ? angebote : angebote.filter((a) => a.status === statusFilter);
 
 const countAll = angebote.length;
-const countQualifiziert = angebote.filter((a) => a.status === 'qualifiziert - Angebot gesendet').length;
+const countAktiv = angebote.filter((a) => a.status === 'qualifiziert - Angebot gesendet').length;
+const countAngenommen = angebote.filter((a) => a.status === 'Angenommen').length;
+const countAbgelehnt = angebote.filter((a) => a.status === 'Abgelehnt').length;
 const countAbgelaufen = angebote.filter((a) => a.status === 'Abgelaufen').length;
+
+const statusTabs = [
+  { value: 'alle', label: 'Alle', count: countAll },
+  { value: 'qualifiziert - Angebot gesendet', label: 'Aktiv', count: countAktiv },
+  { value: 'Angenommen', label: 'Angenommen', count: countAngenommen },
+  { value: 'Abgelehnt', label: 'Abgelehnt', count: countAbgelehnt },
+  { value: 'Abgelaufen', label: 'Abgelaufen', count: countAbgelaufen },
+];
 
 function formatBudget(value: string) {
   const map: Record<string, string> = {
@@ -31,37 +41,31 @@ function formatBudget(value: string) {
 }
 
 function statusBadgeClass(status: string) {
-  if (status === 'Abgelaufen') return 'bg-slate-100 text-slate-600';
-  return 'bg-emerald-100 text-emerald-700';
+  if (status === 'Angenommen') return 'bg-emerald-100 text-emerald-700';
+  if (status === 'Abgelehnt') return 'bg-rose-100 text-rose-700';
+  if (status === 'Abgelaufen') return 'bg-slate-200 text-slate-600';
+  return 'bg-amber-100 text-amber-700';
 }
+
+const statusActionUrl = `${import.meta.env.BASE_URL}admin/api/status`;
 ---
 
 <Layout title="Admin — Angebote | AngebotsPipeline" description="Übersicht aller automatisch versendeten Angebote.">
-  <main class="mx-auto max-w-6xl px-6 py-10">
+  <main class="mx-auto max-w-7xl px-6 py-10">
     <div class="mb-8 flex flex-wrap items-end justify-between gap-4">
       <div>
         <h1 class="text-2xl font-bold tracking-tight text-slate-900">Versendete Angebote</h1>
         <p class="mt-1 text-sm text-slate-500">Automatisch von der Angebots-Pipeline erstellt und verschickt.</p>
       </div>
-      <nav class="flex gap-2 text-sm">
-        <a
-          href="?status=alle"
-          class={`rounded-lg px-3 py-1.5 font-medium ${statusFilter === 'alle' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-        >
-          Alle ({countAll})
-        </a>
-        <a
-          href="?status=qualifiziert - Angebot gesendet"
-          class={`rounded-lg px-3 py-1.5 font-medium ${statusFilter === 'qualifiziert - Angebot gesendet' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
-        >
-          Aktiv ({countQualifiziert})
-        </a>
-        <a
-          href="?status=Abgelaufen"
-          class={`rounded-lg px-3 py-1.5 font-medium ${statusFilter === 'Abgelaufen' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-        >
-          Abgelaufen ({countAbgelaufen})
-        </a>
+      <nav class="flex flex-wrap gap-2 text-sm">
+        {statusTabs.map((tab) => (
+          <a
+            href={`?status=${encodeURIComponent(tab.value)}`}
+            class={`rounded-lg px-3 py-1.5 font-medium ${statusFilter === tab.value ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+          >
+            {tab.label} ({tab.count})
+          </a>
+        ))}
       </nav>
     </div>
 
@@ -77,74 +81,146 @@ function statusBadgeClass(status: string) {
       </p>
     )}
 
-    <div class="space-y-3">
-      {filtered.map((a) => (
-        <details class="group rounded-xl border border-slate-200 bg-white shadow-sm open:shadow-md">
-          <summary class="flex cursor-pointer list-none flex-wrap items-center gap-x-6 gap-y-2 px-5 py-4">
-            <span class="w-28 shrink-0 text-xs text-slate-400">{a.datum ?? '—'}</span>
-            <span class="min-w-[10rem] flex-1 font-medium text-slate-900">{a.name}</span>
-            <span class="text-sm text-slate-500">{a.firma || '—'}</span>
-            <span class="text-sm text-slate-500">{formatBudget(a.budget)}</span>
-            <span class="font-mono text-xs text-slate-400">{a.angebotsnummer ?? '—'}</span>
-            <span class={`rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClass(a.status)}`}>
-              {a.status}
-            </span>
-            <svg class="ml-auto h-4 w-4 text-slate-400 transition group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
-            </svg>
-          </summary>
-          <div class="border-t border-slate-100 px-5 py-4 text-sm">
-            <dl class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-              <div>
-                <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">E-Mail</dt>
-                <dd class="mt-0.5 text-slate-700">
-                  <a href={`mailto:${a.email}`} class="text-emerald-700 hover:underline">{a.email}</a>
-                </dd>
-              </div>
-              <div>
-                <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Quelle</dt>
-                <dd class="mt-0.5 text-slate-700">{a.quelle || '—'}</dd>
-              </div>
-              <div>
-                <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Gewünschter Starttermin</dt>
-                <dd class="mt-0.5 text-slate-700">{a.starttermin || '—'}</dd>
-              </div>
-              <div>
-                <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Angelegt</dt>
-                <dd class="mt-0.5 text-slate-700">{new Date(a.created_at).toLocaleString('de-DE')}</dd>
-              </div>
-              <div class="sm:col-span-2">
-                <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Projektbeschreibung</dt>
-                <dd class="mt-0.5 whitespace-pre-wrap text-slate-700">{a.projektbeschreibung}</dd>
-              </div>
-              {a.angebot_summary && (
-                <div class="sm:col-span-2 border-t border-slate-100 pt-3">
-                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Von Claude generiertes Angebot</dt>
-                  <dd class="mt-1 text-slate-700">{a.angebot_summary}</dd>
-                </div>
-              )}
-              {a.angebot_leistungen && (
-                <div class="sm:col-span-2">
-                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Leistungen</dt>
-                  <dd class="mt-0.5 whitespace-pre-wrap text-slate-700">{a.angebot_leistungen}</dd>
-                </div>
-              )}
-              {a.angebot_zeitplan && (
-                <div>
-                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Zeitplan</dt>
-                  <dd class="mt-0.5 text-slate-700">{a.angebot_zeitplan}</dd>
-                </div>
-              )}
-              {a.angebot_preisspanne && (
-                <div>
-                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Preisspanne</dt>
-                  <dd class="mt-0.5 text-slate-700">{a.angebot_preisspanne}</dd>
-                </div>
-              )}
-            </dl>
-          </div>
-        </details>
-      ))}
-    </div>
+    {!loadError && filtered.length > 0 && (
+      <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+        <table class="w-full min-w-[72rem] table-fixed border-collapse text-sm">
+          <colgroup>
+            <col class="w-24" />
+            <col class="w-44" />
+            <col class="w-36" />
+            <col class="w-32" />
+            <col class="w-36" />
+            <col class="w-24" />
+            <col class="w-44" />
+            <col class="w-20" />
+          </colgroup>
+          <thead>
+            <tr class="border-b border-slate-200 text-left text-xs font-medium uppercase tracking-wide text-slate-400">
+              <th class="px-4 py-3">Datum</th>
+              <th class="px-4 py-3">Name</th>
+              <th class="px-4 py-3">Firma</th>
+              <th class="px-4 py-3">Budget</th>
+              <th class="px-4 py-3">Angebotsnr.</th>
+              <th class="px-4 py-3">Tag 10</th>
+              <th class="px-4 py-3">Status</th>
+              <th class="px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((a) => {
+              const entschieden = a.status === 'Angenommen' || a.status === 'Abgelehnt';
+              return (
+                <tr class="border-b border-slate-100 align-top last:border-0">
+                  <td class="truncate px-4 py-3 text-xs text-slate-400">{a.datum ?? '—'}</td>
+                  <td class="truncate px-4 py-3 font-medium text-slate-900">{a.name}</td>
+                  <td class="truncate px-4 py-3 text-slate-600">{a.firma || '—'}</td>
+                  <td class="truncate px-4 py-3 text-slate-600">{formatBudget(a.budget)}</td>
+                  <td class="truncate px-4 py-3 font-mono text-xs text-slate-400">{a.angebotsnummer ?? '—'}</td>
+                  <td class="px-4 py-3 text-xs">
+                    {a.tag10_erinnerung_gesendet ? (
+                      <span class="text-slate-600">✓ gesendet</span>
+                    ) : (
+                      <span class="text-slate-300">—</span>
+                    )}
+                  </td>
+                  <td class="px-4 py-3">
+                    <span class={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClass(a.status)}`}>
+                      {a.status}
+                    </span>
+                  </td>
+                  <td class="relative px-4 py-3 text-right">
+                    <details>
+                      <summary class="cursor-pointer text-xs font-medium text-emerald-700 hover:underline">
+                        Details
+                      </summary>
+                      <div class="absolute right-0 z-20 mt-2 w-[36rem] max-w-[90vw] rounded-xl border border-slate-200 bg-white p-5 text-left text-sm shadow-lg">
+                        <dl class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+                          <div>
+                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">E-Mail</dt>
+                            <dd class="mt-0.5 text-slate-700">
+                              <a href={`mailto:${a.email}`} class="text-emerald-700 hover:underline">{a.email}</a>
+                            </dd>
+                          </div>
+                          <div>
+                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Quelle</dt>
+                            <dd class="mt-0.5 text-slate-700">{a.quelle || '—'}</dd>
+                          </div>
+                          <div>
+                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Gewünschter Starttermin</dt>
+                            <dd class="mt-0.5 text-slate-700">{a.starttermin || '—'}</dd>
+                          </div>
+                          <div>
+                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Angelegt</dt>
+                            <dd class="mt-0.5 text-slate-700">{new Date(a.created_at).toLocaleString('de-DE')}</dd>
+                          </div>
+                          <div class="sm:col-span-2">
+                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Projektbeschreibung</dt>
+                            <dd class="mt-0.5 whitespace-pre-wrap text-slate-700">{a.projektbeschreibung}</dd>
+                          </div>
+                          {a.angebot_summary && (
+                            <div class="sm:col-span-2 border-t border-slate-100 pt-3">
+                              <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Von Claude generiertes Angebot</dt>
+                              <dd class="mt-1 text-slate-700">{a.angebot_summary}</dd>
+                            </div>
+                          )}
+                          {a.angebot_leistungen && (
+                            <div class="sm:col-span-2">
+                              <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Leistungen</dt>
+                              <dd class="mt-0.5 whitespace-pre-wrap text-slate-700">{a.angebot_leistungen}</dd>
+                            </div>
+                          )}
+                          {a.angebot_zeitplan && (
+                            <div>
+                              <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Zeitplan</dt>
+                              <dd class="mt-0.5 text-slate-700">{a.angebot_zeitplan}</dd>
+                            </div>
+                          )}
+                          {a.angebot_preisspanne && (
+                            <div>
+                              <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Preisspanne</dt>
+                              <dd class="mt-0.5 text-slate-700">{a.angebot_preisspanne}</dd>
+                            </div>
+                          )}
+                        </dl>
+
+                        <div class="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                          <p class="text-xs text-slate-400">
+                            {entschieden
+                              ? `Kunde hat bereits entschieden: ${a.status}`
+                              : 'Rückmeldung des Kunden erfassen:'}
+                          </p>
+                          <div class="flex gap-2">
+                            <form method="POST" action={statusActionUrl}>
+                              <input type="hidden" name="id" value={a.id} />
+                              <input type="hidden" name="status" value="Angenommen" />
+                              <button
+                                type="submit"
+                                class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                              >
+                                ✓ Angenommen
+                              </button>
+                            </form>
+                            <form method="POST" action={statusActionUrl}>
+                              <input type="hidden" name="id" value={a.id} />
+                              <input type="hidden" name="status" value="Abgelehnt" />
+                              <button
+                                type="submit"
+                                class="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700"
+                              >
+                                ✕ Abgelehnt
+                              </button>
+                            </form>
+                          </div>
+                        </div>
+                      </div>
+                    </details>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    )}
   </main>
 </Layout>

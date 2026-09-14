@@ -32,8 +32,16 @@ Import from File. (Live-Instanz: bereits importiert und aktiv unter
    Preisspanne) im CRM — damit nachvollziehbar bleibt, woran man sich
    die 14 Tage Gültigkeit gebunden hat.
 9. **Wait**: 3 Tage → **SMTP**: Follow-up-Mail ("Kurze Nachfrage — gibt es offene Fragen?").
-10. **Wait**: 7 weitere Tage (Tag 10) → **SMTP**: Follow-up-Mail ("Dein Angebot läuft in 4 Tagen ab").
+10. **Wait**: 7 weitere Tage (Tag 10) → **SMTP**: Follow-up-Mail ("Dein Angebot läuft in 4 Tagen ab")
+    → **Supabase**: `tag10_erinnerung_gesendet = true` setzen (Sichtbarkeit im Admin-Bereich).
 11. **Wait**: 4 weitere Tage (Tag 14) → **Supabase**: Status auf `Abgelaufen` setzen (kein weiterer Kontakt).
+
+Der Admin-Bereich (`/admin` der Astro-Seite) erlaubt außerdem, ein Angebot
+manuell als `Angenommen` oder `Abgelehnt` zu markieren, sobald der Kunde
+reagiert hat — unabhängig vom automatischen Follow-up. **Achtung:** Die
+Tag-14-Node setzt den Status aktuell unbedingt auf `Abgelaufen` zurück,
+auch wenn zwischenzeitlich manuell `Angenommen`/`Abgelehnt` gesetzt wurde.
+Falls das stört, müsste die Tag-14-Node den aktuellen Status vorher prüfen.
 
 ## Vorbedingung: Supabase-Tabelle anlegen
 
@@ -56,6 +64,7 @@ create table public.angebot_anfragen (
   angebot_leistungen text,
   angebot_zeitplan text,
   angebot_preisspanne text,
+  tag10_erinnerung_gesendet boolean not null default false,
   created_at timestamptz not null default now()
 );
 ```
@@ -67,7 +76,8 @@ alter table public.angebot_anfragen
   add column angebot_summary text,
   add column angebot_leistungen text,
   add column angebot_zeitplan text,
-  add column angebot_preisspanne text;
+  add column angebot_preisspanne text,
+  add column tag10_erinnerung_gesendet boolean not null default false;
 ```
 
 ## Benötigte Credentials (in n8n anlegen)

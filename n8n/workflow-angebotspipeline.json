@@ -265,6 +265,31 @@
       }
     },
     {
+      "id": "supabase-tag10-flag",
+      "name": "Supabase - Tag 10 markieren",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [2550, 200],
+      "parameters": {
+        "operation": "update",
+        "schema": { "__rl": true, "mode": "list", "value": "public" },
+        "table": { "__rl": true, "mode": "list", "value": "angebot_anfragen" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Supabase - CRM speichern').item.json.id }}",
+            "tag10_erinnerung_gesendet": true
+          },
+          "matchingColumns": ["id"],
+          "schema": []
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": { "name": "Supabase Postgres (freelancer)" }
+      }
+    },
+    {
       "id": "wait-tag14",
       "name": "Wait - bis Tag 14",
       "type": "n8n-nodes-base.wait",
@@ -379,6 +404,11 @@
       ]
     },
     "SMTP - Follow-up Tag 10": {
+      "main": [
+        [{ "node": "Supabase - Tag 10 markieren", "type": "main", "index": 0 }]
+      ]
+    },
+    "Supabase - Tag 10 markieren": {
       "main": [
         [{ "node": "Wait - bis Tag 14", "type": "main", "index": 0 }]
       ]

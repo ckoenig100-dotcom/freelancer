@@ -52,6 +52,13 @@ oben), der laufende Prozess liest zur Laufzeit nichts aus `.env`.
 CLI-Aufrufe gegen n8n gedacht (siehe unten) und werden von keinem
 Astro-Code referenziert — sie landen dadurch nie im Build-Output.
 
+**Wichtig hinter nginx:** `astro.config.mjs` setzt `security.allowedDomains`
+auf `agentic-code.at`/`www.agentic-code.at`. Ohne das vertraut Astro den
+`X-Forwarded-*`-Headern von nginx nicht (Schutz gegen Host-Header-Spoofing)
+und hält jede Anfrage für "localhost" — dadurch blockiert Astros
+eingebauter CSRF-Schutz (`security.checkOrigin`) jedes POST-Formular im
+Admin-Bereich mit 403. Bei einer neuen Domain diese Liste anpassen.
+
 ## Projektstruktur
 
 ```text
@@ -66,7 +73,9 @@ Astro-Code referenziert — sie landen dadurch nie im Build-Output.
 │       ├── index.astro
 │       ├── kontakt.astro            # Kontaktformular-Seite
 │       ├── danke.astro              # Erfolgsseite nach Absenden
-│       └── admin/index.astro        # Übersicht aller Angebote (passwortgeschützt)
+│       └── admin/
+│           ├── index.astro          # Übersicht aller Angebote (passwortgeschützt)
+│           └── api/status.ts        # POST-Endpoint: Angebot als Angenommen/Abgelehnt markieren
 └── .env.example
 ```
 
